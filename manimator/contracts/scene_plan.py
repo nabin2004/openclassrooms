@@ -9,16 +9,26 @@ class SceneClass(str, Enum):
     ZOOMED = "ZoomedScene"
     GRAPH = "GraphScene"
 
+
 class Budget(str, Enum):
     LOW = "low"      # max 3 animations
     MEDIUM = "medium"  # max 6 animations
     HIGH = "high"    # max 10 animations
+
 
 class TransitionStyle(str, Enum):
     CUT = "cut"
     FADE = "fade"
     CONTINUATION = "continuation"
     WIPE = "wipe"
+
+
+class SceneEntry(BaseModel):
+    id: int = Field(ge=0)
+    title: str = Field(max_length=40)
+    scene_class: SceneClass
+    budget: Budget
+    prerequisite_ids: list[int] = Field(default_factory=list)
 
 
 class ScenePlan(BaseModel):
@@ -47,11 +57,10 @@ class ScenePlan(BaseModel):
                 if prereq == scene.id:
                     raise ValueError(f"Scene {scene.id} cannot be its own prerequisite")
         return self
-    
 
     @model_validator(mode="after")
     def no_cycles_in_prerequisites(self) -> "ScenePlan":
-        # Kahn's algorithm; if topo sort doesn't consume all nodes, there's a cycle
+        # Kahn's algorithm: if topo sort doesn't consume all nodes, there's a cycle
         from collections import deque
         graph: dict[int, list[int]] = {s.id: list(s.prerequisite_ids) for s in self.scenes}
         in_degree: dict[int, int] = {s.id: 0 for s in self.scenes}
