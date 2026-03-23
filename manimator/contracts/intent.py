@@ -14,7 +14,7 @@ class Modality(str, Enum):
     GRAPH = "graph"
     MIXED = "mixed"
     
-class Intent(BaseModel):
+class IntentResult(BaseModel):
     in_scope: bool 
     raw_query: str = Field(max_length=1024)
     concept_type: ConceptType 
