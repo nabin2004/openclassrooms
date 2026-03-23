@@ -1,0 +1,19 @@
+version = 1
+revision = 3
+requires-python = ">=3.14"
+
+[manifest]
+members = [
+    "manimator",
+    "openclassrooms",
+]
+
+[[package]]
+name = "manimator"
+version = "0.1.0"
+source = { virtual = "manimator" }
+
+[[package]]
+name = "openclassrooms"
+version = "0.1.0"
+source = { virtual = "." }
