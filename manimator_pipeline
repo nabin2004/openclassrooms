@@ -1,0 +1,25 @@
+// Manimator Pipeline
+digraph {
+	classify [label=classify shape=box]
+	decompose [label=decompose shape=box]
+	plan [label=plan shape=box]
+	codegen [label=codegen shape=box]
+	validate [label=validate shape=box]
+	repair [label=repair shape=box]
+	render [label=render shape=box]
+	critique [label=critique shape=box]
+	finalize [label=finalize shape=box]
+	END [label=END shape=doublecircle]
+	classify -> decompose [label=in_scope]
+	classify -> END [label=out_of_scope]
+	decompose -> plan
+	plan -> codegen
+	codegen -> validate
+	validate -> render [label="no_failures or retry>=MAX"]
+	validate -> repair [label="failures & retry<MAX"]
+	repair -> validate
+	render -> critique
+	critique -> plan [label="replan_required & replan_count<MAX"]
+	critique -> finalize [label="no_replan or replan_count>=MAX"]
+	finalize -> END
+}
