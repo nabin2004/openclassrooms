@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 import litellm
 from manimator.contracts.intent import ConceptType, IntentResult, Modality
-
+from manim_utils import strip_markdown_code_blocks
 load_dotenv()
 
 MODEL = os.getenv("INTENT_CLASSIFIER_MODEL", "groq/llama-3.1-8b-instant")
@@ -56,12 +56,13 @@ async def classify_intent(raw_query: str) -> IntentResult:
 
     raw = response.choices[0].message.content.strip()
 
-    # Strip markdown code blocks if model wraps response
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
+    # # Strip markdown code blocks if model wraps response
+    # if raw.startswith("```"):
+    #     raw = raw.split("```")[1]
+    #     if raw.startswith("json"):
+    #         raw = raw[4:]
+    # raw = raw.strip()
+    raw = strip_markdown_code_blocks(raw)
 
     data = json.loads(raw)
 
