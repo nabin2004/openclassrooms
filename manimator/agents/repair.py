@@ -64,6 +64,6 @@ async def repair_code(validation: ValidationResult) -> str:
     )
 
     raw = response.choices[0].message.content.strip()
+    print("[DEBUG] Raw LLM response (repair):", repr(raw))
     fixed_code = strip_markdown_code_blocks(raw)
-
     return fixed_code

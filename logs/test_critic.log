@@ -1,0 +1,4 @@
+Input scenes: [0, 1, 2]
+Input paths: ['test_outputs/scene_0.mp4', 'test_outputs/scene_1.mp4', 'test_outputs/scene_2.mp4']
+[DEBUG] Using stub critic implementation (no actual image analysis)
+Critic result: {'replan_required': False, 'failed_scene_ids': [], 'r_visual': 0.7, 'r_semantic': 0.8, 'combined_score': 0.75, 'critic_feedback': ['Stub implementation - no actual analysis performed'], 'keyframe_paths': ['test_outputs/scene_0.mp4', 'test_outputs/scene_1.mp4', 'test_outputs/scene_2.mp4'], 'replan_count': 0}

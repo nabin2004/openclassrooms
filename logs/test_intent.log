@@ -1,0 +1,20 @@
+/home/nabin/projects/manimator_v2/OpenClassrooms/.venv/lib/python3.14/site-packages/litellm/litellm_core_utils/logging_worker.py:75: RuntimeWarning: coroutine 'Logging.async_success_handler' was never awaited
+  self._queue = None
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+Classify {
+    "in_scope": true,
+    "concept_type": "math",
+    "modality": "2d",
+    "complexity": 1,
+    "reject_reason": null
+}
+Classify {
+    "in_scope": true,
+    "concept_type": "ai",
+    "modality": "mixed",
+    "complexity": 3,
+    "reject_reason": null
+}
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+

@@ -8,8 +8,12 @@ def format_params(params: dict) -> str:
 
 
 async def generate_code(spec: SceneSpec) -> str:
-    # Imports
-    imports = ", ".join(spec.imports)
+    animation_imports = set()
+    for anim in spec.animations:
+        animation_imports.add(anim.type)
+    
+    all_imports = list(set(spec.imports + list(animation_imports)))
+    imports = ", ".join(all_imports)
 
     # Object definitions
     object_lines = []

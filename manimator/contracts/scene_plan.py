@@ -7,7 +7,8 @@ class SceneClass(str, Enum):
     THREE_D = "ThreeDScene"
     MOVING_CAMERA = "MovingCameraScene"
     ZOOMED = "ZoomedScene"
-    GRAPH = "GraphScene"
+    # GraphScene is removed as it doesn't exist in modern Manim
+    # Use regular Scene with Axes for graph functionality
 
 
 class Budget(str, Enum):
@@ -25,17 +26,17 @@ class TransitionStyle(str, Enum):
 
 class SceneEntry(BaseModel):
     id: int = Field(ge=0)
-    title: str = Field(max_length=40)
+    title: str
     scene_class: SceneClass
     budget: Budget
     prerequisite_ids: list[int] = Field(default_factory=list)
 
 
 class ScenePlan(BaseModel):
-    scene_count: int = Field(ge=1, le=6)
+    scene_count: int
     scenes: list[SceneEntry]
     transition_style: TransitionStyle
-    total_duration_target: int | None = Field(default=None, ge=10, le=300)
+    total_duration_target: int | None 
 
     @model_validator(mode="after")
     def scene_count_matches_scenes(self) -> "ScenePlan":

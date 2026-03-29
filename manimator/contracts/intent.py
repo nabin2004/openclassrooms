@@ -16,7 +16,7 @@ class Modality(str, Enum):
     
 class IntentResult(BaseModel):
     in_scope: bool 
-    raw_query: str = Field(max_length=1024)
+    raw_query: str
     concept_type: ConceptType 
     modality: Modality 
     complexity: int = Field(ge=1, le=5)

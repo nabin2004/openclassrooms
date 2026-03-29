@@ -1,6 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 from manimator.contracts.scene_spec import SceneSpec
+from manimator.config.video_config import get_video_config
 
 class ErrorType(str, Enum):
     SYNTAX = "syntax"
@@ -10,7 +11,7 @@ class ErrorType(str, Enum):
     CAMERA_CONFLICT = "camera_conflict"
     TIMEOUT = "timeout"
 
-MAX_RETRIES = 3
+MAX_RETRIES = 10  # Increased for unlimited mode
 
 class ValidationResult(BaseModel):
     passed: bool
@@ -41,10 +42,11 @@ class ValidationResult(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def retry_count_below_max(self) -> "ValidationResult":
-        if self.retry_count >= MAX_RETRIES:
+    def retry_count_within_limit(self) -> "ValidationResult":
+        config = get_video_config()
+        if self.retry_count > config.max_retries:
             raise ValueError(
-                f"retry_count={self.retry_count} has reached MAX_RETRIES={MAX_RETRIES}. "
-                f"Do not route to repair agent — emit partial result instead."
+                f"retry_count={self.retry_count} has reached MAX_RETRIES={config.max_retries}. "
+                "Do not route to repair agent — emit partial result instead."
             )
         return self

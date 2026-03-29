@@ -14,4 +14,5 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "manimator",
+    "webapp",
 ]

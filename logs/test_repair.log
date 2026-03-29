@@ -1,0 +1,14 @@
+Input validation: {'passed': False, 'scene_id': 0, 'failing_code': '\nfrom manim import Scene, Axes, Dot\n\nclass TestScene(Scene):\n    def construct(self):\n        axes = Axes(x_range=[0, 10], y_range=[0, 10])\n        dot = Dot(point=[5, 5, 0])\n        self.play(Create(NonExistentObject), run_time=1.0)\n        self.play(Create(dot), run_time=1.0)\n', 'error_type': <ErrorType.NAME_ERROR: 'name_error'>, 'error_message': "name 'NonExistentObject' is not defined", 'error_line': 6, 'retry_count': 0, 'original_spec': {'scene_id': 0, 'class_name': 'TestScene', 'scene_class': <SceneClass.SCENE: 'Scene'>, 'imports': ['Scene', 'Axes', 'Dot'], 'objects': [{'name': 'axes', 'type': 'Axes', 'init_params': {'x_range': [0, 10], 'y_range': [0, 10]}}, {'name': 'dot', 'type': 'Dot', 'init_params': {'point': [5, 5, 0]}}], 'animations': [{'type': 'Create', 'target': 'axes', 'run_time': 1.0, 'params': {}}, {'type': 'Create', 'target': 'dot', 'run_time': 1.0, 'params': {}}], 'camera_ops': [], 'voiceover_script': None, 'budget': <Budget.LOW: 'low'>}}
+[DEBUG] Raw LLM response (repair): '```python\nfrom manim import Scene, Axes, Dot, Create\n\nclass TestScene(Scene):\n    def construct(self):\n        axes = Axes(x_range=[0, 10], y_range=[0, 10])\n        dot = Dot(point=[5, 5, 0])\n        self.play(Create(axes), run_time=1.0)\n        self.play(Create(dot), run_time=1.0)\n```'
+Repaired code:
+from manim import Scene, Axes, Dot, Create
+
+class TestScene(Scene):
+    def construct(self):
+        axes = Axes(x_range=[0, 10], y_range=[0, 10])
+        dot = Dot(point=[5, 5, 0])
+        self.play(Create(axes), run_time=1.0)
+        self.play(Create(dot), run_time=1.0)
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+

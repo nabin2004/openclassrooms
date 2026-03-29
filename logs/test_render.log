@@ -1,0 +1,72 @@
+/home/nabin/projects/manimator_v2/OpenClassrooms/.venv/lib/python3.14/site-packages/langchain_core/_api/deprecation.py:25: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1.fields import FieldInfo as FieldInfoV1
+Testing render with mock state...
+❌ Failed to render scene 0: ╭─────────────────────────────── Traceback (most recent call last) ────────────────────────────────╮
+│ /home/nabin/snap/code/228/.local/share/mise/installs/python/3.12.12/lib/python3.12/site-packages │
+│ /manim/cli/render/commands.py:125 in render                                                      │
+│                                                                                                  │
+│   122 │   │   │   try:                                                                           │
+│   123 │   │   │   │   with tempconfig({}):                                                       │
+│   124 │   │   │   │   │   scene = SceneClass()                                                   │
+│ ❱ 125 │   │   │   │   │   scene.render()                                                         │
+│   126 │   │   │   except Exception:                                                              │
+│   127 │   │   │   │   error_console.print_exception()                                            │
+│   128 │   │   │   │   sys.exit(1)                                                                │
+│                                                                                                  │
+│ /home/nabin/snap/code/228/.local/share/mise/installs/python/3.12.12/lib/python3.12/site-packages │
+│ /manim/scene/scene.py:259 in render                                                              │
+│                                                                                                  │
+│    256 │   │   """                                                                               │
+│    257 │   │   self.setup()                                                                      │
+│    258 │   │   try:                                                                              │
+│ ❱  259 │   │   │   self.construct()                                                              │
+│    260 │   │   except EndSceneEarlyException:                                                    │
+│    261 │   │   │   pass                                                                          │
+│    262 │   │   except RerunSceneException:                                                       │
+│                                                                                                  │
+│ /tmp/tmpbt270yqk.py:5 in construct                                                               │
+│                                                                                                  │
+│   2                                                                                              │
+│   3 class TestScene1(Scene):                                                                     │
+│   4 │   def construct(self):                                                                     │
+│ ❱ 5 │   │   circle = Circle(radius=1, color=BLUE)                                                │
+│   6 │   │   self.play(Create(circle), run_time=1.0)                                              │
+│   7                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+NameError: name 'BLUE' is not defined
+
+❌ Failed to render scene 1: ╭─────────────────────────────── Traceback (most recent call last) ────────────────────────────────╮
+│ /home/nabin/snap/code/228/.local/share/mise/installs/python/3.12.12/lib/python3.12/site-packages │
+│ /manim/cli/render/commands.py:125 in render                                                      │
+│                                                                                                  │
+│   122 │   │   │   try:                                                                           │
+│   123 │   │   │   │   with tempconfig({}):                                                       │
+│   124 │   │   │   │   │   scene = SceneClass()                                                   │
+│ ❱ 125 │   │   │   │   │   scene.render()                                                         │
+│   126 │   │   │   except Exception:                                                              │
+│   127 │   │   │   │   error_console.print_exception()                                            │
+│   128 │   │   │   │   sys.exit(1)                                                                │
+│                                                                                                  │
+│ /home/nabin/snap/code/228/.local/share/mise/installs/python/3.12.12/lib/python3.12/site-packages │
+│ /manim/scene/scene.py:259 in render                                                              │
+│                                                                                                  │
+│    256 │   │   """                                                                               │
+│    257 │   │   self.setup()                                                                      │
+│    258 │   │   try:                                                                              │
+│ ❱  259 │   │   │   self.construct()                                                              │
+│    260 │   │   except EndSceneEarlyException:                                                    │
+│    261 │   │   │   pass                                                                          │
+│    262 │   │   except RerunSceneException:                                                       │
+│                                                                                                  │
+│ /tmp/tmpq6a_7bi_.py:5 in construct                                                               │
+│                                                                                                  │
+│   2                                                                                              │
+│   3 class TestScene2(Scene):                                                                     │
+│   4 │   def construct(self):                                                                     │
+│ ❱ 5 │   │   square = Square(side_length=2, color=RED)                                            │
+│   6 │   │   self.play(Create(square), run_time=1.0)                                              │
+│   7                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+NameError: name 'RED' is not defined
+
+Render result: {'rendered_paths': {0: 'outputs/scene_0.mp4', 1: 'outputs/scene_1.mp4'}}

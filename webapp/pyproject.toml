@@ -1,0 +1,13 @@
+[project]
+name = "webapp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastlite>=0.2.4",
+    "markdown>=3.10.2",
+    "monsterui>=1.0.45",
+    "passlib>=1.7.4",
+    "python-fasthtml>=0.13.2",
+]

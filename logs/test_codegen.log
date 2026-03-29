@@ -1,0 +1,11 @@
+Input spec: {'scene_id': 0, 'class_name': 'TestScene', 'scene_class': <SceneClass.SCENE: 'Scene'>, 'imports': ['Scene', 'Axes', 'Dot', 'Text'], 'objects': [{'name': 'axes', 'type': 'Axes', 'init_params': {'x_range': [0, 10], 'y_range': [0, 10]}}, {'name': 'dot', 'type': 'Dot', 'init_params': {'point': [5, 5, 0]}}], 'animations': [{'type': 'Create', 'target': 'axes', 'run_time': 1.0, 'params': {}}, {'type': 'Create', 'target': 'dot', 'run_time': 1.0, 'params': {}}], 'camera_ops': [], 'voiceover_script': None, 'budget': <Budget.LOW: 'low'>}
+Generated code:
+from manim import Text, Scene, Dot, Create, Axes
+
+class TestScene(Scene):
+    def construct(self):
+        axes = Axes(, x_range=[0, 10], y_range=[0, 10])
+        dot = Dot(, point=[5, 5, 0])
+        self.play(Create(axes), run_time=1.0)
+        self.play(Create(dot), run_time=1.0)
+

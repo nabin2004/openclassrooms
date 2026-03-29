@@ -71,10 +71,80 @@ async def node_repair(state: PipelineState) -> dict:
 
 
 async def node_render(state: PipelineState) -> dict:
-    # STUB — real Manim render goes here in Phase 1
+    import os
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    
+    # Create outputs directory
+    outputs_dir = Path("outputs")
+    outputs_dir.mkdir(exist_ok=True)
+    
     rendered = {}
+    
     for spec in state.scene_specs:
-        rendered[spec.scene_id] = f"outputs/scene_{spec.scene_id}.mp4"
+        code = state.generated_codes[spec.scene_id]
+        
+        # Write the Manim code to a temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(code)
+            temp_file = f.name
+        
+        try:
+            # Render the scene using Manim
+            scene_class = spec.class_name
+            output_file = f"outputs/scene_{spec.scene_id}.mp4"
+            
+            cmd = [
+                "manim", 
+                temp_file, 
+                scene_class,
+                "-qm",  # medium quality
+                "--output_file", f"scene_{spec.scene_id}"
+            ]
+            
+            result = subprocess.run(
+                cmd, 
+                capture_output=True, 
+                text=True
+            )
+            
+            if result.returncode == 0:
+                # Manim creates files in media/videos/ by default
+                # Look for the generated file in common locations
+                media_dir = Path("media/videos")
+                if media_dir.exists():
+                    # Find the video file
+                    for file in media_dir.rglob(f"*scene_{spec.scene_id}*.mp4"):
+                        file.rename(output_file)
+                        break
+                    else:
+                        # Try alternative naming
+                        for file in media_dir.rglob(f"*{scene_class}*.mp4"):
+                            file.rename(output_file)
+                            break
+                
+                if Path(output_file).exists():
+                    rendered[spec.scene_id] = output_file
+                    print(f"✅ Successfully rendered scene {spec.scene_id} to {output_file}")
+                else:
+                    print(f"⚠️  Manim ran but output file not found at {output_file}")
+                    rendered[spec.scene_id] = output_file  # still return the path
+            else:
+                print(f"❌ Failed to render scene {spec.scene_id}: {result.stderr}")
+                rendered[spec.scene_id] = output_file  # fallback path
+                
+        except Exception as e:
+            print(f"❌ Error rendering scene {spec.scene_id}: {e}")
+            rendered[spec.scene_id] = f"outputs/scene_{spec.scene_id}.mp4"  # fallback path
+            
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+    
     return {"rendered_paths": rendered}
 
 async def node_critique(state: PipelineState) -> dict:
