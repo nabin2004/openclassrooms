@@ -55,6 +55,7 @@ async def classify_intent(raw_query: str) -> IntentResult:
     )
 
     raw = response.choices[0].message.content.strip()
+    # with open()
     print("Classify", raw)
 
     # # Strip markdown code blocks if model wraps response

@@ -4,7 +4,6 @@ import asyncio
 from dotenv import load_dotenv
 from litellm import acompletion
 import litellm
-
 from manimator.contracts.intent import IntentResult
 from manimator.contracts.scene_plan import Budget, SceneEntry, ScenePlan, TransitionStyle, SceneClass
 from manimator.manim_utils import strip_markdown_code_blocks
@@ -13,52 +12,79 @@ from manimator.contracts.intent import ConceptType, IntentResult, Modality
 
 load_dotenv()
 
-MODEL = os.getenv("SCENE_DECOMPOSER_MODEL","groq/llama-3.1-8b-instant")
+MODEL = os.getenv("SCENE_DECOMPOSER_MODEL", "groq/llama-3.1-8b-instant")
 
-SYSTEM_PROMPT = """You are a scene decomposition expert for an AI math animation system.
-Given a user's intent and query, break it down into a logical sequence of scenes for animation.
+SYSTEM_PROMPT = """
+You are a CS education director for a 3Blue1Brown-style channel.
+You decompose topics into scenes. Each scene answers exactly ONE question
+a viewer would naturally ask — ordered by the viewer's confusion, not the textbook.
 
-You must respond with a JSON object containing:
+DECOMPOSITION RULES — non-negotiable:
+1. The first scene always breaks a false intuition the viewer currently holds.
+   Never start with a definition. Start with the thing they think they already understand
+   and show why that intuition is incomplete.
+2. Every scene has ONE anchor visual — the single image that IS the insight.
+   If you cannot name the anchor visual, the scene does not exist yet.
+3. Scene order follows the viewer's questions in the order they naturally arise.
+4. Maximum 8 scenes per topic. Fewer is better. Every scene must earn its place.
+5. Each scene specifies its Manim class based on what it needs to teach:
+   - MovingCameraScene: traversal, search, scanning, anything with a moving focus
+   - ZoomedScene: precision detail, boundary conditions, edge cases
+   - ThreeDScene: spatial structures, graphs in 3D, neural network layers
+   - Scene: everything else — static reveals, comparisons, transformations
+
+COLOR SCHEMA — consistent across all scenes:
+- BLUE: data at rest, input, the thing being examined
+- GOLD: active operation, the mechanism, what is happening RIGHT NOW
+- GREEN: resolved, correct, confirmed output
+- RED: violation, error, boundary condition
+- GRAY: eliminated, already understood, background context
+
+SCENE CLASS SELECTION LOGIC:
+- Any scene involving traversal, search, or a moving pointer → MovingCameraScene
+- Any scene revealing a surprising scale or boundary → ZoomedScene
+- Any scene with depth, layers, or 3D spatial reasoning → ThreeDScene
+- All other scenes → Scene
+
+Return ONLY valid JSON:
 {
-    "scene_count": integer (no limit),
+    "scene_count": 4,
     "scenes": [
         {
-            "id": integer (starting from 0),
-            "title": string (no character limit),
-            "scene_class": "Scene" | "ThreeDScene" | "MovingCameraScene" | "ZoomedScene",
-            "budget": "low" | "medium" | "high",
-            "prerequisite_ids": array of integers (scenes that must come before this one)
+            "id": 0,
+            "title": "Why linear scan feels right but isn't",
+            "question_answered": "Why not just check every element?",
+            "false_intuition_broken": "Scanning feels safe and complete",
+            "anchor_visual": "Array of 1M elements, pointer crawling from left — counter showing operations",
+            "anchor_position": "CENTER — owns 60% of screen",
+            "color_schema": {
+                "BLUE": "unexamined elements",
+                "GOLD": "current pointer position",
+                "GRAY": "already checked elements"
+            },
+            "camera_instruction": "Start wide on full array, slowly pan right following the pointer",
+            "scene_class": "MovingCameraScene",
+            "duration_hint": "40s",
+            "budget": "medium",
+            "prerequisite_ids": []
         }
     ],
-    "transition_style": "cut" | "fade" | "continuation" | "wipe",
-    "total_duration_target": integer (no limit - seconds)
+    "transition_style": "continuation",
+    "total_duration_target": 180
 }
 
-Scene classes:
-- "Scene": Basic 2D animations (including graphs with Axes)
-- "ThreeDScene": 3D animations and camera movement
-- "MovingCameraScene": Complex camera movements
-- "ZoomedScene": Zoomed-in detailed views
+Every scene MUST have: question_answered, false_intuition_broken, anchor_visual,
+anchor_position, color_schema, camera_instruction, scene_class, duration_hint.
+A scene missing any of these fields is incomplete and must not appear in the output.
+"""
 
-Budget levels:
-- "low": basic animations (no strict limit)
-- "medium": moderate animations (no strict limit)  
-- "high": complex animations (no strict limit)
-
-Scene titles: No character limit - be descriptive and clear
-Scene count: No limit - create as many scenes as needed
-Duration: No limit - set total_duration_target as needed
-
-Keep scenes focused and logical. Each scene should build upon previous ones."""
 
 async def decompose_scenes(intent: IntentResult) -> ScenePlan:
     config = get_video_config()
-    
-    # Build dynamic prompt based on configuration
     limits = apply_config_limits("", config)
-    
-    user_prompt = f"""Decompose this animation request into scenes:
-    
+
+    user_prompt = f"""Decompose this into scenes:
+
 Query: "{intent.raw_query}"
 Concept Type: {intent.concept_type}
 Modality: {intent.modality}
@@ -67,31 +93,32 @@ Complexity: {intent.complexity}
 Configuration limits:
 {limits}
 
-Return a valid JSON scene plan."""
-    
+Apply all decomposition rules. Order scenes by the viewer's confusion, not the textbook.
+First scene must break a false intuition.
+Every scene must name its anchor visual before anything else.
+Return valid JSON."""
+
     response = await litellm.acompletion(
-        model = MODEL,
+        model=MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.3,
     )
-
     raw = response.choices[0].message.content.strip()
     print("[DEBUG] Raw LLM response (scene_decomposer):", repr(raw))
     raw = strip_markdown_code_blocks(raw)
     data = json.loads(raw)
-    
+
     try:
         scenes_data = data["scenes"]
-
         scenes = [
             SceneEntry(
                 id=scene["id"],
                 title=scene["title"],
                 scene_class=SceneClass(scene["scene_class"]),
-                budget=Budget(scene["budget"]),
+                budget=Budget(scene.get("budget", "high")),  # Default to high if not provided
                 prerequisite_ids=scene.get("prerequisite_ids", []),
             )
             for scene in scenes_data
@@ -108,8 +135,8 @@ Return a valid JSON scene plan."""
     except Exception as e:
         raise ValueError(f"Failed to parse ScenePlan: {e}\nRaw output:\n{raw}")
 
+
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(decompose_scenes(IntentResult(
         in_scope=True,
         raw_query="Teach me about Multilayer perceptron",

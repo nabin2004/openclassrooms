@@ -28,7 +28,7 @@ class SceneEntry(BaseModel):
     id: int = Field(ge=0)
     title: str
     scene_class: SceneClass
-    budget: Budget
+    budget: Budget = Budget.HIGH
     prerequisite_ids: list[int] = Field(default_factory=list)
 
 

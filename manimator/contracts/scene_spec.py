@@ -63,7 +63,7 @@ class MobjectSpec(BaseModel):
 
 class AnimationSpec(BaseModel):
     type: str
-    target: str  # must match a MobjectSpec.name
+    target: str | None = None # must match a MobjectSpec.name
     run_time: float = Field(default=1.0, ge=0.1, le=10.0)
     params: dict = Field(default_factory=dict)
 
@@ -114,6 +114,14 @@ class SceneSpec(BaseModel):
         for anim in self.animations:
             target = anim.target
             
+            # Handle Wait animations which don't need a target
+            if target is None or target.lower() in ("none", "null"):
+                continue
+            
+            # Handle special camera targets
+            if target.startswith("camera.") or target == "camera":
+                continue
+            
             # Handle method calls like "b_tracker.set_value"
             if "." in target:
                 base_target = target.split(".")[0]
@@ -123,10 +131,19 @@ class SceneSpec(BaseModel):
                         f"Defined objects: {object_names}"
                     )
             else:
-                # Direct object reference
-                if target not in object_names:
-                    raise ValueError(
-                        f"Animation target '{target}' is not defined in objects. "
-                        f"Defined objects: {object_names}"
-                    )
+                # Handle array indexing like "latency_array[9]" or slicing "latency_array[0:8]"
+                if "[" in target and "]" in target:
+                    base_target = target.split("[")[0]
+                    if base_target not in object_names:
+                        raise ValueError(
+                            f"Animation target '{target}' has base object '{base_target}' which is not defined in objects. "
+                            f"Defined objects: {object_names}"
+                        )
+                else:
+                    # Direct object reference
+                    if target not in object_names:
+                        raise ValueError(
+                            f"Animation target '{target}' is not defined in objects. "
+                            f"Defined objects: {object_names}"
+                        )
         return self
