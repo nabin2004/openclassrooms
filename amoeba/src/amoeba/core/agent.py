@@ -2,7 +2,7 @@ from typing import Optional, Type, TypeVar
 from pydantic import BaseModel
 from amoeba.core.llm import LLMClient
 from amoeba.core.memory import DagestanAdapter
-from amoeba.utils import safe_parse_json
+from amoeba.src.amoeba.utils import safe_parse_json
 
 T = TypeVar("T", bound=BaseModel)
 
