@@ -1,0 +1,7 @@
+[project]
+name = "amoeba"
+version = "0.1.0"
+description = "Amoeba is an agent framework."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []

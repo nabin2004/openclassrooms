@@ -15,4 +15,5 @@ dependencies = [
 members = [
     "manimator",
     "webapp",
+    "amoeba",
 ]

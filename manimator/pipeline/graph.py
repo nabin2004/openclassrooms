@@ -236,3 +236,9 @@ def build_pipeline() -> StateGraph:
 
 
 pipeline = build_pipeline()
+# graph = pipeline.get_graph()
+
+# png_bytes = graph.draw_mermaid_png()
+
+# with open("pipeline_graph.png", "wb") as f:
+#     f.write(png_bytes)
