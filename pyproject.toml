@@ -16,4 +16,5 @@ members = [
     "manimator",
     "webapp",
     "amoeba",
+    "autolecture",
 ]

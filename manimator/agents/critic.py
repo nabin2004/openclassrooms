@@ -59,7 +59,7 @@ async def critique_render(
     
     return CriticResult(
         replan_required=replan_required,
-        failed_scene_ids=[],  # No failed scenes for now
+        failed_scene_ids=[],  
         r_visual=r_visual,
         r_semantic=r_semantic,
         combined_score=combined,

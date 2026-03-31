@@ -176,3 +176,15 @@ Every object must have a composition_role and a position."""
 
     except Exception as e:
         raise ValueError(f"Failed to parse SceneSpec: {e}\nRaw output:\n{raw}")
+    
+if __name__ == "__main__":
+    import asyncio
+    test_scene = SceneEntry(
+        id=0,
+        title="What is a Circle?",
+        scene_class="concept_introduction",
+        budget="low",
+        prerequisite_ids=[],
+    )
+    spec = asyncio.run(plan_scene(test_scene))
+    print(json.dumps(spec.dict(), indent=2))
