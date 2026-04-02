@@ -1,11 +1,23 @@
 from google.adk.agents.llm_agent import Agent
 from google.adk.agents.sequential_agent import SequentialAgent
+import os
+import subprocess
+import json
+import tempfile
+from google.adk.tools import ToolContext
+import soundfile as sf
+import numpy as np
+
+# Import TTS registry and engine
+from .tts.engine import TTSEngine
+from .tts.registry import get_provider, register_provider
+# (We assume the built-in providers are auto-registered)
 
 # ------------------------------
 # 1. Decomposer: topic → scenes (JSON)
 # ------------------------------
 decomposer = Agent(
-    model='gemini-2.5-flash',   # Adjust to a valid model name
+    model='gemini-2.5-flash',   
     name='decomposer',
     description='Decomposes a CS topic into scenes for a 3Blue1Brown-style video.',
     instruction="""
@@ -96,7 +108,8 @@ Before writing a single object or animation, answer these three questions intern
 3. What is the moment of maximum surprise in this scene?
 
 Every object and animation must serve one of those three answers.
-If it does not, it should not exist.
+If it does not, it should nofrom google.adk.tools import ToolContext
+t exist.
 
 COMPOSITION LAWS — non-negotiable:
 - ONE hero element per scene. It lives at CENTER and owns 60% of screen space.
@@ -273,14 +286,114 @@ No explanations outside the code block. Only the Python code.
 """
 )
 
+# ------------------------------
+# Tools for video compilation and audio merging
+# ------------------------------
+def compile_manim_and_save_artifact(code: str, class_name: str, context: ToolContext) -> str:
+    """Compiles generated Manim Python code and moves the video to the ADK artifacts folder.
+    Returns the absolute path to the compiled video."""
+    python_file = "generated_scene.py"
+    with open(python_file, "w") as f:
+        f.write(code)
+
+    cmd = f"manim -ql {python_file} {class_name}"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Compilation failed! Error log:\n{result.stderr}")
+
+    video_src = f"media/videos/generated_scene/480p15/{class_name}.mp4"
+    if not os.path.exists(video_src):
+        raise FileNotFoundError(f"Expected video file not found: {video_src}")
+
+    artifacts_dir = ".adk/artifacts"
+    os.makedirs(artifacts_dir, exist_ok=True)
+
+    dest_path = os.path.join(artifacts_dir, f"{class_name}.mp4")
+    os.rename(video_src, dest_path)
+    return dest_path
+
+
+def generate_audio_from_transcript(transcript: str, output_audio_path: str,
+                                   provider_name: str = "kitten",
+                                   voice: str = "default", speed: float = 1.0) -> str:
+    """Generate audio from transcript using the specified TTS provider."""
+    provider = get_provider(provider_name)
+    audio = provider.generate(transcript, voice=voice, speed=speed)
+    sf.write(output_audio_path, audio, provider.sample_rate)
+    return output_audio_path
+
+
+def merge_audio_video(video_path: str, audio_path: str, output_path: str) -> str:
+    """Combine video and audio using ffmpeg."""
+    # ffmpeg command: copy video stream, add audio, output
+    cmd = [
+        "ffmpeg",
+        "-i", video_path,
+        "-i", audio_path,
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-shortest",
+        output_path,
+        "-y"
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return output_path
+
+
+def full_video_pipeline(code_json: str, context: ToolContext) -> str:
+    """
+    Takes the JSON from codegen (containing 'code' and 'transcript'),
+    compiles the video, generates audio from the transcript, and merges them.
+    Returns the final video path.
+    """
+    data = json.loads(code_json)
+    code = data["code"]
+    transcript = data["transcript"]
+    # Extract class name from code (assume first class definition)
+    import re
+    match = re.search(r'class\s+(\w+)\s*\(', code)
+    if not match:
+        raise ValueError("Could not find class name in generated code.")
+    class_name = match.group(1)
+
+    # 1. Compile video
+    video_path = compile_manim_and_save_artifact(code, class_name, context)
+
+    # 2. Generate audio
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        audio_path = tmp.name
+    generate_audio_from_transcript(transcript, audio_path)
+
+    # 3. Merge
+    final_video_path = video_path.replace(".mp4", "_with_audio.mp4")
+    merge_audio_video(video_path, audio_path, final_video_path)
+
+    # Clean up temporary audio file
+    os.unlink(audio_path)
+
+    return final_video_path
+
+
+execution_agent = Agent(
+    model='gemini-2.5-flash',
+    name='execution_agent',
+    description='Compiles Manim code and adds audio narration.',
+    instruction="""You will receive a JSON object with keys "code" and "transcript". 
+    Call the full_video_pipeline tool to generate the final video with audio.
+    Return only the final video path or a success message.""",
+    tools=[full_video_pipeline]
+)
 
 # ------------------------------
-# 4. Pipeline: decompose → plan → code
+# 4. Pipeline: decompose → plan → code → execute (with TTS)
 # ------------------------------
 code_pipeline_agent = SequentialAgent(
     name="CodePipelineAgent",
-    sub_agents=[decomposer, planner, codegen],
-    description="Decomposes a CS topic, plans each scene, and generates Manim code.",
+    sub_agents=[decomposer, planner, codegen, execution_agent],
+    description="Decomposes a CS topic, plans each scene, generates Manim code, and produces a video with audio narration.",
 )
 
 root_agent = code_pipeline_agent

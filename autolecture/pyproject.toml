@@ -6,4 +6,11 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "google-adk>=1.10.0",
+    "ipython>=9.12.0",
+    "manim>=0.20.1",
+    "soundfile>=0.13.1",
+    "kittentts>=0.1.3",
 ]
+
+[tool.setuptools.packages.find]
+include = ["scene_decomposer*"]
