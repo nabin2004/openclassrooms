@@ -3,6 +3,7 @@ from typing import Any, Optional, Type, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from amoeba.core.llm import LLMClient
+from amoeba.core.safe_acompletion import LLMResponse
 from amoeba.core.memory import DagestanAdapter, StatelessMemoryAdapter
 from amoeba.exceptions import ConfigurationError, StructuredOutputError
 from amoeba.utils import safe_parse_json
@@ -32,12 +33,17 @@ class Agent:
         )
         self._history: list[dict[str, str]] = []
 
+    @property
+    def last_llm_response(self) -> LLMResponse | None:
+        return self._llm.last_response
+
     async def think(
         self,
         user_input: str,
         context: dict | None = None,
         *,
         max_tokens: int | None = None,
+        model: str | None = None,
         **llm_kwargs: Any,
     ) -> str:
         if context is None:
@@ -52,6 +58,7 @@ class Agent:
             user=user_input,
             history=self._history,
             max_tokens=max_tokens,
+            model=model,
             **llm_kwargs,
         )
 
@@ -74,10 +81,15 @@ class Agent:
         context: dict | None = None,
         *,
         max_tokens: int | None = None,
+        model: str | None = None,
         **llm_kwargs: Any,
     ) -> T:
         raw = await self.think(
-            user_input, context=context, max_tokens=max_tokens, **llm_kwargs
+            user_input,
+            context=context,
+            max_tokens=max_tokens,
+            model=model,
+            **llm_kwargs,
         )
         target_schema = schema or self.output_schema
         if not target_schema:

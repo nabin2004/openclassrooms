@@ -1,10 +1,19 @@
+import os
 import asyncio
 
 from amoeba.core.agent import Agent
 from amoeba.core.memory import StatelessMemoryAdapter
-from amoeba.observability import log_llm_event
+from amoeba.exceptions import LLMError
+from amoeba.observability import log_llm_event, new_trace_id
+from amoeba.observability.tracing import log_trace_summary
 from amoeba.runtime import load_agent_env
-from manimator.contracts.intent import IntentClassificationPayload, IntentResult
+from manimator.contracts.intent import (
+    ConceptType,
+    IntentClassificationPayload,
+    IntentResult,
+    Modality,
+)
+from manimator.observability.metrics import append_metrics_jsonl
 from manimator.prompts.registry import get_intent_prompt
 
 load_agent_env()
@@ -26,22 +35,197 @@ _intent_agent = Agent(
 )
 
 
-async def classify_intent(raw_query: str) -> IntentResult:
-    _intent_agent.reset_history()
-    payload = await _intent_agent.think_and_parse(
-        f"Classify this query: {raw_query}",
-        schema=IntentClassificationPayload,
-        max_tokens=256,
+def _truthy_env(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _dry_run_result(raw_query: str) -> IntentResult:
+    """Deterministic path for CI / pipeline debugging (no LLM)."""
+    q = raw_query.lower()
+    oos_kw = (
+        "heart", "blood", "cook", "pasta", "biology", "anatomy",
+        "geography", "music", "literature",
     )
+    in_scope = not any(k in q for k in oos_kw)
+    if in_scope:
+        return IntentResult(
+            in_scope=True,
+            raw_query=raw_query,
+            concept_type=ConceptType.MATH,
+            modality=Modality.TWO_D,
+            complexity=2,
+            reject_reason=None,
+            confidence=1.0,
+        )
+    return IntentResult(
+        in_scope=False,
+        raw_query=raw_query,
+        concept_type=ConceptType.MATH,
+        modality=Modality.TWO_D,
+        complexity=1,
+        reject_reason="dry-run heuristic: query matched out-of-scope keywords",
+        confidence=1.0,
+    )
+
+
+def _tokens_total(tokens: dict | None) -> int | None:
+    if not tokens:
+        return None
+    t = tokens.get("total_tokens")
+    if t is not None:
+        return int(t)
+    p = tokens.get("prompt_tokens")
+    c = tokens.get("completion_tokens")
+    if p is not None and c is not None:
+        return int(p) + int(c)
+    return None
+
+
+async def classify_intent(raw_query: str) -> IntentResult:
+    trace_id = new_trace_id()
+    prompt = _ACTIVE_INTENT_PROMPT
+    user_msg = f"Classify this query: {raw_query}"
+    fallback = os.getenv("INTENT_CLASSIFIER_FALLBACK_MODEL", "").strip() or None
+
+    if _truthy_env("MANIMATOR_DRY_RUN"):
+        result = _dry_run_result(raw_query)
+        log_trace_summary(
+            event="intent_classification",
+            trace_id=trace_id,
+            prompt_version=prompt.version,
+            prompt_name=prompt.name,
+            input_text=raw_query,
+            output=result.model_dump(),
+            latency_ms=0.0,
+            model="dry_run",
+            dry_run=True,
+        )
+        append_metrics_jsonl(
+            {
+                "event": "intent_classification",
+                "trace_id": trace_id,
+                "prompt_version": prompt.version,
+                "ok": True,
+                "dry_run": True,
+                "in_scope": result.in_scope,
+            }
+        )
+        return result
+
+    first_error: LLMError | None = None
+    _intent_agent.reset_history()
+    try:
+        payload = await _intent_agent.think_and_parse(
+            user_msg,
+            schema=IntentClassificationPayload,
+            max_tokens=256,
+        )
+    except LLMError as e:
+        first_error = e
+        if not fallback:
+            lr = _intent_agent.last_llm_response
+            log_trace_summary(
+                event="intent_classification",
+                trace_id=trace_id,
+                prompt_version=prompt.version,
+                prompt_name=prompt.name,
+                input_text=raw_query,
+                error=str(e),
+                tokens=lr.tokens if lr else None,
+                latency_ms=lr.latency_ms if lr else None,
+                model=lr.model if lr else None,
+                cost=lr.cost if lr else None,
+            )
+            append_metrics_jsonl(
+                {
+                    "event": "intent_classification",
+                    "trace_id": trace_id,
+                    "prompt_version": prompt.version,
+                    "ok": False,
+                    "error": str(e),
+                }
+            )
+            raise
+        log_llm_event(
+            "intent_classification.fallback",
+            trace_id=trace_id,
+            fallback_model=fallback,
+            error=str(e),
+        )
+        _intent_agent.reset_history()
+        try:
+            payload = await _intent_agent.think_and_parse(
+                user_msg,
+                schema=IntentClassificationPayload,
+                max_tokens=256,
+                model=fallback,
+            )
+        except LLMError as e2:
+            lr = _intent_agent.last_llm_response
+            log_trace_summary(
+                event="intent_classification",
+                trace_id=trace_id,
+                prompt_version=prompt.version,
+                prompt_name=prompt.name,
+                input_text=raw_query,
+                error=str(e2),
+                used_fallback=True,
+                tokens=lr.tokens if lr else None,
+                latency_ms=lr.latency_ms if lr else None,
+                model=lr.model if lr else None,
+                cost=lr.cost if lr else None,
+            )
+            append_metrics_jsonl(
+                {
+                    "event": "intent_classification",
+                    "trace_id": trace_id,
+                    "prompt_version": prompt.version,
+                    "ok": False,
+                    "used_fallback": True,
+                    "error": str(e2),
+                }
+            )
+            raise
+
     result = payload.into_result(raw_query)
+
+    lr = _intent_agent.last_llm_response
     log_llm_event(
         "intent_classification",
-        prompt_name=_ACTIVE_INTENT_PROMPT.name,
-        prompt_version=_ACTIVE_INTENT_PROMPT.version,
+        prompt_name=prompt.name,
+        prompt_version=prompt.version,
+        trace_id=trace_id,
         in_scope=result.in_scope,
         concept_type=result.concept_type.value,
         modality=result.modality.value,
         complexity=result.complexity,
+        used_fallback=first_error is not None,
+    )
+    log_trace_summary(
+        event="intent_classification",
+        trace_id=trace_id,
+        prompt_version=prompt.version,
+        prompt_name=prompt.name,
+        input_text=raw_query,
+        output=result.model_dump(),
+        tokens=lr.tokens if lr else None,
+        latency_ms=lr.latency_ms if lr else None,
+        model=lr.model if lr else None,
+        cost=lr.cost if lr else None,
+        used_fallback=first_error is not None,
+    )
+    append_metrics_jsonl(
+        {
+            "event": "intent_classification",
+            "trace_id": trace_id,
+            "prompt_version": prompt.version,
+            "ok": True,
+            "in_scope": result.in_scope,
+            "latency_ms": lr.latency_ms if lr else None,
+            "model": lr.model if lr else None,
+            "tokens_total": _tokens_total(lr.tokens if lr else None),
+            "used_fallback": first_error is not None,
+        }
     )
     return result
 

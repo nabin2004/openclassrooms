@@ -20,12 +20,19 @@ from amoeba.observability import get_trace_id, log_llm_event
 
 
 @dataclass(frozen=True)
-class LLMCallResult:
+class LLMResponse:
+    """Normalized completion: use this shape everywhere above LiteLLM."""
+
     text: str
+    tokens: dict[str, Any]
     latency_ms: float
     model: str | None
-    usage: dict[str, Any]
-    raw_response: Any
+    cost: float | None
+    raw: Any
+
+
+# Backward-compatible name
+LLMCallResult = LLMResponse
 
 
 def _redact_llm_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -51,6 +58,16 @@ def _usage_dict(response: Any) -> dict[str, Any]:
         if val is not None:
             out[key] = val
     return out
+
+
+def _extract_cost(response: Any) -> float | None:
+    try:
+        c = litellm.completion_cost(completion_response=response)
+        if c is None:
+            return None
+        return float(c)
+    except Exception:
+        return None
 
 
 def _total_tokens(usage: dict[str, Any]) -> int | None:
@@ -90,7 +107,7 @@ async def acompletion_safe(
     max_total_tokens: int | None = None,
     require_non_empty_text: bool = True,
     **litellm_kwargs: Any,
-) -> LLMCallResult:
+) -> LLMResponse:
     """
     Run ``litellm.acompletion`` with uniform errors, timing, and optional guards.
 
@@ -171,18 +188,21 @@ async def acompletion_safe(
         )
 
     model = getattr(response, "model", None)
+    cost = _extract_cost(response)
     log_llm_event(
         "llm.response",
         model=model,
         latency_ms=latency_ms,
         usage=usage,
         text_chars=len(text),
+        cost=cost,
     )
 
-    return LLMCallResult(
+    return LLMResponse(
         text=text,
+        tokens=usage,
         latency_ms=latency_ms,
         model=model,
-        usage=usage,
-        raw_response=response,
+        cost=cost,
+        raw=response,
     )

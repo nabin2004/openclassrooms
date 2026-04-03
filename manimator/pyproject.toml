@@ -52,5 +52,7 @@ packages = [
     "manimator.tests.agents",
     "manimator.tests.audio",
     "manimator.tests.contracts",
+    "manimator.tests.prompts",
     "manimator.video",
+    "manimator.observability",
 ]

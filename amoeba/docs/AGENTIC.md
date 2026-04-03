@@ -28,7 +28,8 @@ This page is a **short API reference** for stable, dependency-facing helpers. Hi
 
 - **`amoeba.exceptions`** — `AmoebaError` base with `context`, `retryable`, and `user_message`. LLM failures map to `LLMError` / `LLMTimeoutError` / `LLMRateLimitError` / `LLMResponseError`. Parsing: `JSONParseError`, `StructuredOutputError`, `ConfigurationError`. Use **`exc.format_detail()`** for log-friendly dumps.
 - **`amoeba.observability`** — `get_logger`, `log_llm_event`, `log_structured`, trace helpers `get_trace_id` / `set_trace_id` / `new_trace_id` (contextvar, safe across async tasks).
-- **`amoeba.core.safe_acompletion.acompletion_safe`** — Single entry for `litellm.acompletion`: optional **`timeout`**, **`max_total_tokens`**, **`require_non_empty_text`**, returns **`LLMCallResult`** (text, latency, usage, raw response). Used by **`LLMClient`** and **`acompletion_system_user`**.
+- **`amoeba.observability.tracing.log_trace_summary`** — One JSON log line per logical request (`trace_id`, `prompt_version`, `input`, `output`, `tokens`, `latency_ms`, `model`, `cost`, `error`). Logger **`amoeba.trace`**.
+- **`amoeba.core.safe_acompletion.acompletion_safe`** — Single entry for `litellm.acompletion`: optional **`timeout`**, **`max_total_tokens`**, **`require_non_empty_text`**, returns **`LLMResponse`** (`text`, **`tokens`**, **`latency_ms`**, **`model`**, **`cost`**, **`raw`**). Alias **`LLMCallResult`**. Used by **`LLMClient`** and **`acompletion_system_user`**.
 - **`amoeba.core.retry.async_retry_llm`** — Retries only **retryable** errors (default: rate limit + timeout) with exponential backoff.
 - **`amoeba.core.result.Result`** — Optional `ok` / `value` / `error` for pipelines that should not always raise.
 

@@ -1,7 +1,7 @@
 import os
 from typing import Any, Optional
 
-from amoeba.core.safe_acompletion import acompletion_safe
+from amoeba.core.safe_acompletion import LLMResponse, acompletion_safe
 
 
 class LLMClient:
@@ -17,6 +17,7 @@ class LLMClient:
             else default_model
         )
         self.temperature = temperature
+        self.last_response: LLMResponse | None = None
 
     async def call(
         self,
@@ -24,6 +25,7 @@ class LLMClient:
         user: str,
         history: Optional[list] = None,
         *,
+        model: str | None = None,
         max_tokens: Optional[int] = None,
         timeout: float | None = None,
         max_total_tokens: int | None = None,
@@ -36,12 +38,12 @@ class LLMClient:
         messages.append({"role": "user", "content": user})
 
         params: dict[str, Any] = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": self.temperature,
         }
         _reserved = frozenset(
-            {"timeout", "max_total_tokens", "allow_empty", "max_tokens"}
+            {"timeout", "max_total_tokens", "allow_empty", "max_tokens", "model"}
         )
         for key, val in kwargs.items():
             if key not in _reserved:
@@ -55,4 +57,5 @@ class LLMClient:
             require_non_empty_text=not allow_empty,
             **params,
         )
+        self.last_response = result
         return result.text

@@ -163,7 +163,7 @@ Amoeba treats failures as a **structured API**, not a pile of generic exceptions
 
 1. **Hierarchy** — Import from **`amoeba.exceptions`**. Base type **`AmoebaError`** carries **`message`**, **`context`** (dict for logs), **`retryable`** (hint for policy), and **`user_message`** (saner copy for UIs). Subtypes include **`LLMTimeoutError`**, **`LLMRateLimitError`**, **`LLMResponseError`**, **`JSONParseError`**, **`StructuredOutputError`** (Pydantic validation after JSON), **`ConfigurationError`**.
 
-2. **Logging** — Configure the standard library logger **`amoeba`** (and **`amoeba.json`** for parse attempts). **`log_llm_event("llm.request", …)`** / **`llm.response`** emit JSON-shaped payloads on the main **`amoeba`** logger. Attach a **`trace_id`** with **`observability.new_trace_id()`** at request entry so logs and error contexts correlate.
+2. **Logging** — Configure the standard library loggers **`amoeba`**, **`amoeba.json`**, and **`amoeba.trace`**. **`log_llm_event("llm.request", …)`** / **`llm.response`** emit JSON-shaped payloads. **`log_trace_summary`** (in **`amoeba.observability.tracing`**) records one unified record per high-level operation (input preview, output dict, tokens, latency, cost, error). Call **`new_trace_id()`** at request entry so logs and error contexts correlate.
 
 3. **Single LLM choke point** — **`acompletion_safe`** wraps LiteLLM: optional **`asyncio.wait_for`** timeout, token budget check, normalized text extraction, and consistent errors. **`LLMClient.call`** and **`acompletion_system_user`** use it; pass **`timeout=`**, **`max_total_tokens=`**, **`allow_empty=True`** when appropriate.
 
@@ -171,7 +171,13 @@ Amoeba treats failures as a **structured API**, not a pile of generic exceptions
 
 5. **Optional `Result`** — **`amoeba.core.result.Result`** for stages that should return **`ok` / `value` / `error`** instead of raising.
 
-6. **Agent** — **`think_and_parse`** raises **`ConfigurationError`** if no schema, **`JSONParseError`** from **`safe_parse_json`**, **`StructuredOutputError`** on Pydantic **`ValidationError`**. Empty LLM text is an **`LLMResponseError`** from the safe completion layer.
+6. **Agent** — **`think_and_parse`** raises **`ConfigurationError`** if no schema, **`JSONParseError`** from **`safe_parse_json`**, **`StructuredOutputError`** on Pydantic **`ValidationError`**. Empty LLM text is an **`LLMResponseError`** from the safe completion layer. **`Agent.last_llm_response`** exposes the latest **`LLMResponse`** from **`LLMClient`** (tokens, latency, cost) for tracing.
+
+### Manimator intent example (env flags)
+
+- **`MANIMATOR_DRY_RUN`** — Skip the LLM; heuristic **`IntentResult`** for CI / flow tests.
+- **`INTENT_CLASSIFIER_FALLBACK_MODEL`** — After any **`LLMError`**, one retry with this LiteLLM model id.
+- **`MANIMATOR_METRICS_JSONL`** — Append one JSON line per intent call (success/failure) for offline metrics.
 
 ## See also
 
