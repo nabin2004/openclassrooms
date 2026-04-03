@@ -33,11 +33,12 @@ def synthesize_voiceover_to_wav(text: str, out_path: Path) -> None:
     model = get_kitten_model()
     voice = os.getenv("KITTEN_TTS_VOICE", "Jasper")
     speed = float(os.getenv("KITTEN_TTS_SPEED", "1.0"))
+    # Wrapper in kittentts.get_model only accepts voice/speed/sample_rate (no clean_text).
+    # Underlying ONNX model still preprocesses via generate() defaults.
     model.generate_to_file(
         text,
         str(out_path),
         voice=voice,
         speed=speed,
         sample_rate=24000,
-        clean_text=True,
     )

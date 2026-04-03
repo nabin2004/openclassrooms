@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pipeline.graph import pipeline
 from pipeline.state import PipelineState
@@ -15,12 +17,16 @@ TEST_QUERIES = [
 async def test_pipeline_completes_on_query(query: str):
     result = await pipeline.ainvoke(PipelineState(raw_query=query))
     assert result["error"] is None
-    assert result["output_video_path"] is not None
+    assert result.get("delivery_dir")
+    assert result.get("transcript_path")
     assert result["intent"] is not None
     assert result["scene_plan"] is not None
     assert len(result["scene_specs"]) > 0
     assert len(result["generated_codes"]) > 0
     assert result.get("narrated_paths") is not None
+    assert Path(result["transcript_path"]).is_file()
+    if result.get("output_video_path"):
+        assert Path(result["output_video_path"]).is_file()
 
 
 @pytest.mark.asyncio

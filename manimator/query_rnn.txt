@@ -1,0 +1,21 @@
+MANDATORY TOPIC TITLE: "Recurrent Neural Networks (RNNs)". Do not substitute arrays, pointers, or generic CS memory topics—the video must teach RNNs for sequence modeling.
+
+Teach me Recurrent Neural Networks (RNNs) in a visual, intuitive way for a short educational animation.
+
+Audience: someone who knows basic neural nets and vectors but is new to sequences.
+
+Cover these ideas across a small number of scenes (keep each scene focused—one main insight per scene):
+
+1) Why sequences matter: examples like text, speech, or sensor time series where order carries meaning; contrast with a single fixed-length input.
+
+2) The recurrence idea: a hidden state that is updated at each time step as new input arrives; show a simple unrolled diagram (t, t+1, t+2) with arrows for input, hidden state, and optional output.
+
+3) What the RNN computes at a high level: same weights reused across time; intuition that the network “remembers” a summary of the past in the hidden state (without heavy matrix calculus).
+
+4) Limits (briefly): vanishing or exploding signals over long sequences as motivation for later architectures—keep it visual (e.g., fading influence), not a deep proof.
+
+5) Wrap-up: one-sentence recap—RNNs share parameters across time and maintain a hidden state to process ordered data.
+
+Style: 3Blue1Brown-like clarity, minimal clutter, consistent colors (e.g., BLUE for inputs, GOLD for active recurrence, GREEN for outputs).
+
+Output: concise total runtime (a few minutes of video), strong voiceover that matches what appears on screen. Every scene must include explicit narration text suitable for TTS.

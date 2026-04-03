@@ -13,6 +13,7 @@ from manimator.contracts.validation import MAX_RETRIES
 from manimator.contracts.critic import MAX_REPLANS
 from manimator.audio.narration import build_narrated_scene_paths
 from manimator.audio.voiceover import voiceover_text_for_scene
+from manimator.video.delivery import build_delivery_package
 
 ##################################################
 #                NODES 
@@ -166,7 +167,6 @@ async def node_critique(state: PipelineState) -> dict:
 
 
 async def node_finalize(state: PipelineState) -> dict:
-    # STUB: real video concatenation goes here
     from pathlib import Path
 
     output_dir = Path("outputs")
@@ -189,14 +189,22 @@ async def node_finalize(state: PipelineState) -> dict:
         transcript_blocks.append(f"[Scene {spec.scene_id}: {scene_title}]\n{transcript}")
 
     full_transcript = "\n\n".join(transcript_blocks)
-    transcript_path = output_dir / "transcript.txt"
-    transcript_path.write_text(full_transcript, encoding="utf-8")
+
+    pkg = await asyncio.to_thread(
+        build_delivery_package,
+        state.scene_specs,
+        dict(state.narrated_paths),
+        dict(state.rendered_paths),
+        full_transcript,
+        output_dir,
+    )
 
     return {
-        "output_video_path": "outputs/final.mp4",
+        "output_video_path": pkg["output_video_path"],
+        "delivery_dir": pkg["delivery_dir"],
         "scene_transcripts": scene_transcripts,
         "full_transcript": full_transcript,
-        "transcript_path": str(transcript_path),
+        "transcript_path": pkg["transcript_path"],
         "narrated_paths": dict(state.narrated_paths),
     }
 

@@ -50,6 +50,18 @@ Always **`cd` to the workspace root** first.
 uv run --package manimator python -m manimator.main
 ```
 
+Use a custom topic (short prompt):
+
+```bash
+uv run --package manimator python -m manimator.main -q "Teach me RNNs with visuals"
+```
+
+Or a long brief from a file (example: `manimator/query_rnn.txt`):
+
+```bash
+uv run --package manimator python -m manimator.main --query-file manimator/query_rnn.txt
+```
+
 Equivalent after `uv sync --all-packages` (shared `.venv` already includes manimator):
 
 ```bash
@@ -64,9 +76,11 @@ make test-pipeline
 
 Outputs (typical):
 
-- `outputs/transcript.txt` — full transcript used for narration text
-- `outputs/scene_*.mp4` — rendered scenes (when Manim succeeds)
-- `outputs/scene_*_narrated.mp4` — scenes with TTS audio (when TTS is enabled and ffmpeg is available)
+- `outputs/delivery/<timestamp>/final.mp4` — **all scenes in order** (normalized + concatenated with ffmpeg)
+- `outputs/delivery/<timestamp>/transcript.txt` — same transcript text, **in the same folder** as `final.mp4`
+- `outputs/transcript.txt` — copy of the transcript (backward compatibility)
+- `outputs/scene_*.mp4` — per-scene renders (when Manim succeeds)
+- `outputs/scene_*_narrated.mp4` — per-scene video + TTS (when TTS is enabled and ffmpeg is available)
 - `outputs/scene_*_narration.wav` — per-scene WAV intermediates (when TTS runs)
 
 ## Tests (uv)

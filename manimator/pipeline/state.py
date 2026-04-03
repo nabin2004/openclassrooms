@@ -28,6 +28,7 @@ class PipelineState:
 
     # Final output
     output_video_path: str | None = None
+    delivery_dir: str | None = None
     scene_transcripts: dict[int, str] = field(default_factory=dict)  # scene_id -> transcript
     full_transcript: str | None = None
     transcript_path: str | None = None
