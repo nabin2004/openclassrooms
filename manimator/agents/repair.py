@@ -2,6 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 import litellm
+from manimator.agents.llm_response import completion_message_text
 
 from manimator.contracts.validation import ValidationResult
 
@@ -63,7 +64,11 @@ async def repair_code(validation: ValidationResult) -> str:
         temperature=0.1,  # keeps it deterministic
     )
 
-    raw = response.choices[0].message.content.strip()
+    raw = completion_message_text(response)
+    if not raw:
+        raise RuntimeError(
+            "Repair agent received empty model content. Check repair model env and API keys."
+        )
     print("[DEBUG] Raw LLM response (repair):", repr(raw))
     fixed_code = strip_markdown_code_blocks(raw)
     return fixed_code

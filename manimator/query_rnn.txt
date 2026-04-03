@@ -1,21 +1,23 @@
-MANDATORY TOPIC TITLE: "Recurrent Neural Networks (RNNs)". Do not substitute arrays, pointers, or generic CS memory topics—the video must teach RNNs for sequence modeling.
+MANDATORY TOPIC TITLE: "Transformer Architecture". Do not substitute RNNs, attention mechanisms in isolation, or generic sequence models—the video must teach the complete Transformer architecture for sequence modeling.
 
-Teach me Recurrent Neural Networks (RNNs) in a visual, intuitive way for a short educational animation.
+Teach me Transformer Architecture in a visual, intuitive way for a short educational animation.
 
-Audience: someone who knows basic neural nets and vectors but is new to sequences.
+Audience: someone who knows basic neural nets and vectors but is new to attention-based models.
 
 Cover these ideas across a small number of scenes (keep each scene focused—one main insight per scene):
 
-1) Why sequences matter: examples like text, speech, or sensor time series where order carries meaning; contrast with a single fixed-length input.
+1) Why Transformers matter: limitations of RNNs (sequential processing bottleneck); examples like machine translation, language models, or multimodal tasks where parallel processing and long-range dependencies are crucial.
 
-2) The recurrence idea: a hidden state that is updated at each time step as new input arrives; show a simple unrolled diagram (t, t+1, t+2) with arrows for input, hidden state, and optional output.
+2) The attention mechanism: query, key, value concept; show how one token attends to all others in parallel; visualize attention weights with a heatmap showing which tokens influence each computation.
 
-3) What the RNN computes at a high level: same weights reused across time; intuition that the network “remembers” a summary of the past in the hidden state (without heavy matrix calculus).
+3) Self-attention in action: same token can play different roles (query/key/value); demonstrate how the hidden representation for each position is a weighted combination of all input positions; contrast with RNN's strictly sequential flow.
 
-4) Limits (briefly): vanishing or exploding signals over long sequences as motivation for later architectures—keep it visual (e.g., fading influence), not a deep proof.
+4) Multi-head attention and feed-forward layers: multiple attention heads capture different relationships; feed-forward networks applied position-wise; stack these into layers for depth and expressiveness.
 
-5) Wrap-up: one-sentence recap—RNNs share parameters across time and maintain a hidden state to process ordered data.
+5) Positional encoding (briefly): how Transformers inject order information since there's no inherent sequence; show sinusoidal patterns or embedding visualization so parallel processing still respects position.
 
-Style: 3Blue1Brown-like clarity, minimal clutter, consistent colors (e.g., BLUE for inputs, GOLD for active recurrence, GREEN for outputs).
+6) Wrap-up: one-sentence recap—Transformers use self-attention to process entire sequences in parallel, allowing each token to directly attend to all others while maintaining position awareness.
+
+Style: 3Blue1Brown-like clarity, minimal clutter, consistent colors (e.g., BLUE for inputs, GOLD for attention weights, GREEN for outputs, PURPLE for query/key/value).
 
 Output: concise total runtime (a few minutes of video), strong voiceover that matches what appears on screen. Every scene must include explicit narration text suitable for TTS.

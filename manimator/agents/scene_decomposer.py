@@ -6,6 +6,7 @@ from litellm import acompletion
 import litellm
 from manimator.contracts.intent import IntentResult
 from manimator.contracts.scene_plan import Budget, SceneEntry, ScenePlan, TransitionStyle, SceneClass
+from manimator.agents.llm_response import completion_message_text
 from manimator.manim_utils import strip_markdown_code_blocks
 from manimator.config.video_config import get_video_config, apply_config_limits
 from manimator.contracts.intent import ConceptType, IntentResult, Modality
@@ -106,7 +107,12 @@ Return valid JSON."""
         ],
         temperature=0.3,
     )
-    raw = response.choices[0].message.content.strip()
+    raw = completion_message_text(response)
+    if not raw:
+        raise RuntimeError(
+            "Scene decomposer received empty model content. "
+            "Check SCENE_DECOMPOSER_MODEL, API keys, and provider status."
+        )
     print("[DEBUG] Raw LLM response (scene_decomposer):", repr(raw))
     raw = strip_markdown_code_blocks(raw)
     data = json.loads(raw)

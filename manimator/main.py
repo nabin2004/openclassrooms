@@ -17,13 +17,10 @@ if str(PROJECT_ROOT) not in sys.path:
 import argparse
 import asyncio
 
-from dotenv import load_dotenv
-
-load_dotenv(PROJECT_ROOT / ".env")
-
+# Dotenv is applied in manimator/__init__.py (repo .env + manimator/.env).
 from manimator.pipeline.graph import pipeline
 
-DEFAULT_QUERY = """Teach me about RNN architecture in detail"""
+DEFAULT_QUERY = """Teach me about Transformer architecture in detail"""
 
 
 def _parse_args() -> argparse.Namespace:

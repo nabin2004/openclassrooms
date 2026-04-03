@@ -2,11 +2,12 @@ import json
 import os
 from dotenv import load_dotenv
 import litellm
+from manimator.agents.llm_response import completion_message_text
 from manimator.contracts.intent import ConceptType, IntentResult, Modality
 from manimator.manim_utils import strip_markdown_code_blocks
 load_dotenv()
 
-MODEL = os.getenv("INTENT_CLASSIFIER_MODEL", "groq/llama-3.1-8b-instant")
+MODEL = os.getenv("INTENT_CLASSIFIER_MODEL")
 
 SYSTEM_PROMPT = """You are an intent classifier for an AI math animation system.
 The system can ONLY animate topics in: mathematics, computer science, and AI/ML.
@@ -54,8 +55,12 @@ async def classify_intent(raw_query: str) -> IntentResult:
         max_tokens=256,
     )
 
-    raw = response.choices[0].message.content.strip()
-    # with open()
+    raw = completion_message_text(response)
+    if not raw:
+        raise RuntimeError(
+            "Intent classifier received empty model content. "
+            "Check INTENT_CLASSIFIER_MODEL, API keys, and provider status."
+        )
     print("Classify", raw)
 
     # # Strip markdown code blocks if model wraps response

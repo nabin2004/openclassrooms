@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import litellm
 
+from manimator.agents.llm_response import completion_message_text
 from manimator.contracts.scene_plan import SceneEntry
 from manimator.contracts.scene_spec import AnimationSpec, MobjectSpec, SceneSpec
 
@@ -146,7 +147,12 @@ Return voiceover_script for TTS."""
         ],
         temperature=0.3,
     )
-    raw = response.choices[0].message.content.strip()
+    raw = completion_message_text(response)
+    if not raw:
+        raise RuntimeError(
+            "Planner received empty model content. "
+            "Check SCENE_PLANNER_MODEL, API keys, and provider status."
+        )
     print("[DEBUG] Raw LLM response (planner):", repr(raw))
     raw = strip_markdown_code_blocks(raw)
 
