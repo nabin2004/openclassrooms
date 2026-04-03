@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import litellm
-
-from amoeba.core.responses import completion_message_text
+from amoeba.core.safe_acompletion import acompletion_safe
+from amoeba.exceptions import LLMResponseError
 
 
 async def acompletion_system_user(
@@ -17,13 +16,17 @@ async def acompletion_system_user(
     temperature: float = 0.7,
     max_tokens: int | None = None,
     error_context: str = "Agent",
+    timeout: float | None = None,
+    max_total_tokens: int | None = None,
+    allow_empty: bool = False,
     **kwargs: Any,
 ) -> str:
     """
-    Single system + user turn via ``litellm.acompletion``, returning trimmed text.
+    Single system + user turn via centralized :func:`~amoeba.core.safe_acompletion.acompletion_safe`.
 
-    Raises ``RuntimeError`` if the model returns no usable string content
-    (after :func:`completion_message_text`).
+    Raises :class:`~amoeba.exceptions.LLMError` subclasses on provider failures;
+    empty content raises :class:`~amoeba.exceptions.LLMResponseError` with
+    ``error_context`` in the message unless ``allow_empty=True``.
     """
     messages = [
         {"role": "system", "content": system},
@@ -36,13 +39,22 @@ async def acompletion_system_user(
     }
     if max_tokens is not None:
         params["max_tokens"] = max_tokens
-    params.update(kwargs)
+    _reserved = frozenset({"timeout", "max_total_tokens", "allow_empty"})
+    for key, val in kwargs.items():
+        if key not in _reserved:
+            params[key] = val
 
-    response = await litellm.acompletion(**params)
-    raw = completion_message_text(response)
-    if not raw:
-        raise RuntimeError(
-            f"{error_context} received empty model content. "
-            "Check model env var, API keys, and provider status."
+    try:
+        result = await acompletion_safe(
+            timeout=timeout,
+            max_total_tokens=max_total_tokens,
+            require_non_empty_text=not allow_empty,
+            **params,
         )
-    return raw
+    except LLMResponseError as e:
+        raise LLMResponseError(
+            f"{error_context}: {e.message}",
+            context={**e.context, "error_context": error_context},
+            user_message=e.user_message,
+        ) from e
+    return result.text

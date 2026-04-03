@@ -1,9 +1,10 @@
 from typing import Any, Optional, Type, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from amoeba.core.llm import LLMClient
 from amoeba.core.memory import DagestanAdapter, StatelessMemoryAdapter
+from amoeba.exceptions import ConfigurationError, StructuredOutputError
 from amoeba.utils import safe_parse_json
 
 T = TypeVar("T", bound=BaseModel)
@@ -53,11 +54,6 @@ class Agent:
             max_tokens=max_tokens,
             **llm_kwargs,
         )
-        if not raw:
-            raise RuntimeError(
-                f"{self.name}: empty model content. "
-                "Check model env var, API keys, and provider status."
-            )
 
         self.memory.snapshot(
             self.name,
@@ -85,14 +81,23 @@ class Agent:
         )
         target_schema = schema or self.output_schema
         if not target_schema:
-            raise ValueError("No output schema provided")
+            raise ConfigurationError(
+                "No output schema provided for think_and_parse",
+                context={"agent": self.name},
+            )
 
         data = safe_parse_json(raw)
         try:
             return target_schema(**data)
-        except Exception as e:
-            raise ValueError(
-                f"Failed to parse {target_schema.__name__}: {e}\nRaw:\n{raw}"
+        except ValidationError as e:
+            raise StructuredOutputError(
+                f"Model output failed validation for {target_schema.__name__}",
+                context={
+                    "agent": self.name,
+                    "pydantic_errors": e.errors(),
+                    "raw_preview": raw[:2000],
+                },
+                user_message="The model returned JSON that did not match the expected shape.",
             ) from e
 
     async def run(self, state: dict) -> dict:

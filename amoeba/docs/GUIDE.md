@@ -131,7 +131,7 @@ With the default **`DagestanAdapter`**, **`recall()`** may inject prior context 
 
 ### JSON errors
 
-**`safe_parse_json`** raises **`ValueError`** with context, not **`json.JSONDecodeError`** directly. Catch **`ValueError`** or inspect the message when handling parse failures.
+**`safe_parse_json`** raises **`JSONParseError`** (subclass of **`AmoebaError`**) with **`context`** (`text_preview`, `json_error`, optional **`trace_id`**). It logs a **warning** with a truncated preview. Catch **`JSONParseError`** or **`AmoebaError`** at boundaries.
 
 ### `ToolRegistry` default argument
 
@@ -156,6 +156,22 @@ These APIs exist for direction and experiments; treat them as **unstable** unles
 - **Full Dagestan integration** — Memory interfaces describe an eventual three-layer model (temporal / embedding / graph). Only the in-memory path is meaningfully exercised today.
 
 When you depend on experimental pieces, **pin Amoeba to a commit or version** and expect small breaking changes until the API stabilizes.
+
+## Errors, logging, and retries
+
+Amoeba treats failures as a **structured API**, not a pile of generic exceptions.
+
+1. **Hierarchy** — Import from **`amoeba.exceptions`**. Base type **`AmoebaError`** carries **`message`**, **`context`** (dict for logs), **`retryable`** (hint for policy), and **`user_message`** (saner copy for UIs). Subtypes include **`LLMTimeoutError`**, **`LLMRateLimitError`**, **`LLMResponseError`**, **`JSONParseError`**, **`StructuredOutputError`** (Pydantic validation after JSON), **`ConfigurationError`**.
+
+2. **Logging** — Configure the standard library logger **`amoeba`** (and **`amoeba.json`** for parse attempts). **`log_llm_event("llm.request", …)`** / **`llm.response`** emit JSON-shaped payloads on the main **`amoeba`** logger. Attach a **`trace_id`** with **`observability.new_trace_id()`** at request entry so logs and error contexts correlate.
+
+3. **Single LLM choke point** — **`acompletion_safe`** wraps LiteLLM: optional **`asyncio.wait_for`** timeout, token budget check, normalized text extraction, and consistent errors. **`LLMClient.call`** and **`acompletion_system_user`** use it; pass **`timeout=`**, **`max_total_tokens=`**, **`allow_empty=True`** when appropriate.
+
+4. **Retries** — Use **`async_retry_llm`** for transient provider issues; it only retries exceptions you opt into (default: rate limit + timeout). Do **not** blindly retry all **`LLMError`** types.
+
+5. **Optional `Result`** — **`amoeba.core.result.Result`** for stages that should return **`ok` / `value` / `error`** instead of raising.
+
+6. **Agent** — **`think_and_parse`** raises **`ConfigurationError`** if no schema, **`JSONParseError`** from **`safe_parse_json`**, **`StructuredOutputError`** on Pydantic **`ValidationError`**. Empty LLM text is an **`LLMResponseError`** from the safe completion layer.
 
 ## See also
 

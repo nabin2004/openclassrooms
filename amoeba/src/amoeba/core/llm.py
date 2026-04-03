@@ -1,9 +1,7 @@
 import os
 from typing import Any, Optional
 
-import litellm
-
-from amoeba.core.responses import completion_message_text
+from amoeba.core.safe_acompletion import acompletion_safe
 
 
 class LLMClient:
@@ -27,6 +25,9 @@ class LLMClient:
         history: Optional[list] = None,
         *,
         max_tokens: Optional[int] = None,
+        timeout: float | None = None,
+        max_total_tokens: int | None = None,
+        allow_empty: bool = False,
         **kwargs: Any,
     ) -> str:
         messages = [{"role": "system", "content": system}]
@@ -38,10 +39,20 @@ class LLMClient:
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
-            **kwargs,
         }
+        _reserved = frozenset(
+            {"timeout", "max_total_tokens", "allow_empty", "max_tokens"}
+        )
+        for key, val in kwargs.items():
+            if key not in _reserved:
+                params[key] = val
         if max_tokens is not None:
             params["max_tokens"] = max_tokens
 
-        response = await litellm.acompletion(**params)
-        return completion_message_text(response)
+        result = await acompletion_safe(
+            timeout=timeout,
+            max_total_tokens=max_total_tokens,
+            require_non_empty_text=not allow_empty,
+            **params,
+        )
+        return result.text
