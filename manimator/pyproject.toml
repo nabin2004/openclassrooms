@@ -9,6 +9,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "amoeba",
     "litellm>=1.82.6",
     "pydantic>=2.12.5",
     "pytest>=9.0.2",
@@ -24,11 +25,12 @@ tts = [
     "kittentts",
 ]
 
+[tool.uv.sources]
+amoeba = { workspace = true }
+kittentts = { url = "https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl" }
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-
-[tool.uv.sources]
-kittentts = { url = "https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl" }
 
 # Imports are manimator.* but sources live at repo root (agents/, pipeline/, …).
 [tool.setuptools.package-dir]

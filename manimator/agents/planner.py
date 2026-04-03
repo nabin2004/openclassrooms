@@ -1,13 +1,14 @@
 import json
 import os
-from dotenv import load_dotenv
-import litellm
+import re
 
-from manimator.agents.llm_response import completion_message_text
+from amoeba.core.litellm_chat import acompletion_system_user
+from amoeba.runtime import load_agent_env
+from amoeba.utils import strip_fences
 from manimator.contracts.scene_plan import SceneEntry
 from manimator.contracts.scene_spec import AnimationSpec, MobjectSpec, SceneSpec
 
-load_dotenv()
+load_agent_env()
 
 MODEL = os.getenv("SCENE_PLANNER_MODEL", "groq/llama-3.1-8b-instant")
 
@@ -106,22 +107,6 @@ Every feedback point must change at least one object or animation.
 """
 
 
-def strip_markdown_code_blocks(text: str) -> str:
-    text = text.strip()
-    if not text.startswith("```"):
-        return text
-    parts = text.split("```")
-    if len(parts) >= 2:
-        content = parts[1].strip()
-        first_newline = content.find("\n")
-        if first_newline != -1:
-            maybe_lang = content[:first_newline].strip().lower()
-            if maybe_lang in {"json", "python", "js"}:
-                content = content[first_newline + 1:]
-        return content.strip()
-    return text
-
-
 async def plan_scene(scene: SceneEntry, feedback: str | None = None) -> SceneSpec:
     system = SYSTEM_PROMPT
     if feedback:
@@ -139,22 +124,15 @@ Every animation must have a beat and a purpose.
 Every object must have a composition_role and a position.
 Return voiceover_script for TTS."""
 
-    response = await litellm.acompletion(
+    raw = await acompletion_system_user(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_prompt},
-        ],
+        system=system,
+        user=user_prompt,
         temperature=0.3,
+        error_context="Planner",
     )
-    raw = completion_message_text(response)
-    if not raw:
-        raise RuntimeError(
-            "Planner received empty model content. "
-            "Check SCENE_PLANNER_MODEL, API keys, and provider status."
-        )
     print("[DEBUG] Raw LLM response (planner):", repr(raw))
-    raw = strip_markdown_code_blocks(raw)
+    raw = strip_fences(raw)
 
     try:
         data = json.loads(raw)
@@ -165,7 +143,6 @@ Return voiceover_script for TTS."""
         objects = [MobjectSpec(**obj) for obj in data.get("objects", [])]
         animations = [AnimationSpec(**anim) for anim in data.get("animations", [])]
 
-        import re
         raw_title = scene.title
         class_name = re.sub(r'[^a-zA-Z0-9]', '', raw_title)
         if class_name:

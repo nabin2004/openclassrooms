@@ -1,17 +1,15 @@
-import os
-import json
 import asyncio
-from dotenv import load_dotenv
-from litellm import acompletion
-import litellm
-from manimator.contracts.intent import IntentResult
-from manimator.contracts.scene_plan import Budget, SceneEntry, ScenePlan, TransitionStyle, SceneClass
-from manimator.agents.llm_response import completion_message_text
-from manimator.manim_utils import strip_markdown_code_blocks
+import json
+import os
+
+from amoeba.core.litellm_chat import acompletion_system_user
+from amoeba.runtime import load_agent_env
 from manimator.config.video_config import get_video_config, apply_config_limits
 from manimator.contracts.intent import ConceptType, IntentResult, Modality
+from manimator.contracts.scene_plan import Budget, SceneEntry, ScenePlan, TransitionStyle, SceneClass
+from manimator.manim_utils import strip_markdown_code_blocks
 
-load_dotenv()
+load_agent_env()
 
 MODEL = os.getenv("SCENE_DECOMPOSER_MODEL", "groq/llama-3.1-8b-instant")
 
@@ -99,20 +97,13 @@ First scene must break a false intuition.
 Every scene must name its anchor visual before anything else.
 Return valid JSON."""
 
-    response = await litellm.acompletion(
+    raw = await acompletion_system_user(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
+        system=SYSTEM_PROMPT,
+        user=user_prompt,
         temperature=0.3,
+        error_context="Scene decomposer",
     )
-    raw = completion_message_text(response)
-    if not raw:
-        raise RuntimeError(
-            "Scene decomposer received empty model content. "
-            "Check SCENE_DECOMPOSER_MODEL, API keys, and provider status."
-        )
     print("[DEBUG] Raw LLM response (scene_decomposer):", repr(raw))
     raw = strip_markdown_code_blocks(raw)
     data = json.loads(raw)

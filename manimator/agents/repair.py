@@ -1,12 +1,13 @@
 import json
 import os
-from dotenv import load_dotenv
-import litellm
-from manimator.agents.llm_response import completion_message_text
+
+from amoeba.core.litellm_chat import acompletion_system_user
+from amoeba.runtime import load_agent_env
+from amoeba.utils import strip_fences
 
 from manimator.contracts.validation import ValidationResult
 
-load_dotenv()
+load_agent_env()
 
 MODEL = os.getenv("CODE_REPAIR_MODEL", "groq/llama-3.1-8b-instant")
 
@@ -30,20 +31,6 @@ No explanations.
 """
 
 
-def strip_markdown_code_blocks(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```"):
-        parts = text.split("```")
-        if len(parts) >= 2:
-            content = parts[1].strip()
-            if "\n" in content:
-                first_line = content.split("\n", 1)[0].lower()
-                if first_line in {"python", "py"}:
-                    content = content.split("\n", 1)[1]
-            return content.strip()
-    return text
-
-
 async def repair_code(validation: ValidationResult) -> str:
     if validation.passed:
         return validation.failing_code or ""
@@ -55,20 +42,13 @@ async def repair_code(validation: ValidationResult) -> str:
         "spec": validation.original_spec.model_dump(),
     }
 
-    response = await litellm.acompletion(
+    raw = await acompletion_system_user(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(payload)},
-        ],
-        temperature=0.1,  # keeps it deterministic
+        system=SYSTEM_PROMPT,
+        user=json.dumps(payload),
+        temperature=0.1,
+        error_context="Repair agent",
     )
-
-    raw = completion_message_text(response)
-    if not raw:
-        raise RuntimeError(
-            "Repair agent received empty model content. Check repair model env and API keys."
-        )
     print("[DEBUG] Raw LLM response (repair):", repr(raw))
-    fixed_code = strip_markdown_code_blocks(raw)
+    fixed_code = strip_fences(raw)
     return fixed_code

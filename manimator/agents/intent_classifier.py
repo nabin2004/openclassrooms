@@ -1,11 +1,12 @@
 import json
 import os
-from dotenv import load_dotenv
-import litellm
-from manimator.agents.llm_response import completion_message_text
+
+from amoeba.core.litellm_chat import acompletion_system_user
+from amoeba.runtime import load_agent_env
 from manimator.contracts.intent import ConceptType, IntentResult, Modality
 from manimator.manim_utils import strip_markdown_code_blocks
-load_dotenv()
+
+load_agent_env()
 
 MODEL = os.getenv("INTENT_CLASSIFIER_MODEL")
 
@@ -45,22 +46,14 @@ OUT_OF_SCOPE_TOPICS = [
 
 
 async def classify_intent(raw_query: str) -> IntentResult:
-    response = await litellm.acompletion(
+    raw = await acompletion_system_user(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Classify this query: {raw_query}"},
-        ],
+        system=SYSTEM_PROMPT,
+        user=f"Classify this query: {raw_query}",
         temperature=0.0,
         max_tokens=256,
+        error_context="Intent classifier",
     )
-
-    raw = completion_message_text(response)
-    if not raw:
-        raise RuntimeError(
-            "Intent classifier received empty model content. "
-            "Check INTENT_CLASSIFIER_MODEL, API keys, and provider status."
-        )
     print("Classify", raw)
 
     # # Strip markdown code blocks if model wraps response

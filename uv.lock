@@ -104,7 +104,17 @@ wheels = [
 [[package]]
 name = "amoeba"
 version = "0.1.0"
-source = { virtual = "amoeba" }
+source = { editable = "amoeba" }
+dependencies = [
+    { name = "litellm" },
+    { name = "python-dotenv" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "litellm", specifier = ">=1.82.6" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+]
 
 [[package]]
 name = "annotated-doc"
@@ -1875,6 +1885,7 @@ name = "manimator"
 version = "0.1.0"
 source = { editable = "manimator" }
 dependencies = [
+    { name = "amoeba" },
     { name = "langchain-core" },
     { name = "langgraph" },
     { name = "litellm" },
@@ -1892,6 +1903,7 @@ tts = [
 
 [package.metadata]
 requires-dist = [
+    { name = "amoeba", editable = "amoeba" },
     { name = "kittentts", marker = "extra == 'tts'", url = "https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl" },
     { name = "langchain-core", specifier = ">=0.3.0" },
     { name = "langgraph", specifier = ">=0.2.0" },
