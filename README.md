@@ -25,6 +25,45 @@ uv sync --all-packages
 make test-all
 ```
 
+## Developer guide (how to run things)
+
+Work from the **repository root** (`OpenClassrooms/`, where this `README.md` lives).
+
+### Environment
+
+```bash
+uv sync --all-packages          # recommended: all workspace members in .venv
+# optional TTS for manimator:
+uv sync --package manimator --extra tts
+```
+
+### Run Manimator (correct patterns)
+
+The `manimator` package includes a top-level folder named `logging/`. If Python puts the `manimator` project directory on `sys.path` **before** the stdlib is consulted, `import logging` can wrongly load `manimator/logging/` and crash. **Always fix the path or use `-m`.**
+
+| Do this | Why |
+|--------|-----|
+| `uv run --package manimator python -m manimator.main` | **Preferred** from repo root |
+| `uv run python -m manimator.main` | OK after `uv sync --all-packages` |
+| `uv run python manimator/main.py` | OK **after** `main.py` path fix (still prefer `-m`) |
+| `cd manimator && uv run python main.py` | **Avoid** — same `logging` shadow risk unless path is fixed |
+
+### Editable installs (`pip`)
+
+- **Workspace metapackage only** (root deps, not manimator code):  
+  `uv pip install -e .`
+- **Manimator package** (so `import manimator` works from any cwd):  
+  `uv pip install -e ./manimator`
+
+Do not put `packages = [...]` under `[project]` in `pyproject.toml` — that is invalid for PEP 621. Package discovery belongs under `[tool.setuptools]` (root) or `manimator/pyproject.toml`.
+
+### Builds
+
+- `uv build` at the root produces **only** the `openclassrooms` metapackage wheel/sdist (not manimator).
+- To ship manimator, build from `manimator/` (or use the workspace lock + sync).
+
+More detail: [manimator/README.md](manimator/README.md), [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ## Daily Workflow (uv-first)
 
 ```bash

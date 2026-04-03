@@ -1873,7 +1873,7 @@ wheels = [
 [[package]]
 name = "manimator"
 version = "0.1.0"
-source = { virtual = "manimator" }
+source = { editable = "manimator" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph" },
@@ -2441,7 +2441,7 @@ wheels = [
 [[package]]
 name = "openclassrooms"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "graphviz" },
     { name = "ipython" },

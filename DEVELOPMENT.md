@@ -33,6 +33,8 @@ uv run --package manimator python -m manimator.main
 uv run python test_agents.py --agent intent
 ```
 
+**Install / run pitfalls:** see the **Developer guide** in [README.md](README.md) (`logging` vs stdlib, `uv pip install -e ./manimator`, invalid `packages` in `[project]`).
+
 Manimator-specific setup (TTS optional extra, `.env`, pytest): [manimator/README.md](manimator/README.md).
 
 ## Workspace Packages

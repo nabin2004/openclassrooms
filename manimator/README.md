@@ -21,6 +21,8 @@ uv python install 3.14
 uv sync --all-packages
 ```
 
+Editable install with pip (optional, from repo root): `uv pip install -e ./manimator` — requires valid `[tool.setuptools]` in this `pyproject.toml` (never put `packages` under `[project]`).
+
 Optional **text-to-speech** (KittenTTS; large dependency set):
 
 ```bash
