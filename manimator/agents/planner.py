@@ -82,11 +82,13 @@ Return ONLY valid JSON with this structure:
       "beat": 1,
       "purpose": "introduce the array as the hero element"
     }
-  ]
+    ],
+    "voiceover_script": "Narrate this scene in 80-140 words. Describe what appears, what changes, and why it matters. Use plain spoken language for TTS. If a deliberate pause helps, use [pause]."
 }
 
 Every animation MUST have a beat (1, 2, or 3) and a purpose field.
 Every object MUST have a composition_role (hero, supporting, context) and a position (LEFT, CENTER, RIGHT).
+voiceover_script is REQUIRED and must match the visual beats.
 If you cannot write a purpose for an animation, that animation does not belong in this scene.
 
 No explanations. Only JSON.
@@ -133,7 +135,8 @@ Feedback: {feedback or "None"}
 
 Apply all composition laws, timing laws, and the 3-beat rhythm.
 Every animation must have a beat and a purpose.
-Every object must have a composition_role and a position."""
+Every object must have a composition_role and a position.
+Return voiceover_script for TTS."""
 
     response = await litellm.acompletion(
         model=MODEL,
@@ -164,6 +167,10 @@ Every object must have a composition_role and a position."""
         else:
             class_name = "SceneAuto"
 
+        voiceover_script = data.get("voiceover_script")
+        if voiceover_script is not None and not isinstance(voiceover_script, str):
+            voiceover_script = str(voiceover_script)
+
         return SceneSpec(
             scene_id=scene.id,
             class_name=class_name,
@@ -172,6 +179,7 @@ Every object must have a composition_role and a position."""
             imports=data.get("imports", []),
             objects=objects,
             animations=animations,
+            voiceover_script=voiceover_script,
         )
 
     except Exception as e:

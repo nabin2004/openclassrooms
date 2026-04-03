@@ -20,6 +20,7 @@ async def test_pipeline_completes_on_query(query: str):
     assert result["scene_plan"] is not None
     assert len(result["scene_specs"]) > 0
     assert len(result["generated_codes"]) > 0
+    assert result.get("narrated_paths") is not None
 
 
 @pytest.mark.asyncio
@@ -38,3 +39,4 @@ async def test_pipeline_state_is_fully_populated():
     assert result["validation_results"] is not None
     assert result["rendered_paths"] is not None
     assert result["critic_result"] is not None
+    assert result.get("narrated_paths") is not None

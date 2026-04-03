@@ -17,6 +17,7 @@ class PipelineState:
     generated_codes: dict[int, str] = field(default_factory=dict)  # scene_id → code
     validation_results: dict[int, ValidationResult] = field(default_factory=dict)
     rendered_paths: dict[int, str] = field(default_factory=dict)   # scene_id → video path
+    narrated_paths: dict[int, str] = field(default_factory=dict)   # scene_id → video+audio path
     critic_result: CriticResult | None = None
 
     # Control flow
@@ -27,4 +28,7 @@ class PipelineState:
 
     # Final output
     output_video_path: str | None = None
+    scene_transcripts: dict[int, str] = field(default_factory=dict)  # scene_id -> transcript
+    full_transcript: str | None = None
+    transcript_path: str | None = None
     error: str | None = None

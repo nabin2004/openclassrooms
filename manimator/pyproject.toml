@@ -16,5 +16,13 @@ dependencies = [
     "manim>=0.18.0",
 ]
 
+[project.optional-dependencies]
+tts = [
+    "kittentts",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.uv.sources]
+kittentts = { url = "https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl" }

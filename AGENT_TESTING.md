@@ -7,6 +7,9 @@ This directory provides comprehensive tools for testing individual Manimator age
 ### Using Makefile (Recommended)
 
 ```bash
+# Sync dependencies once per environment update
+make sync
+
 # Test individual agents
 make test-intent        # Test intent classifier
 make test-decomposer    # Test scene decomposer  
@@ -34,22 +37,22 @@ make help              # Show all commands
 
 ```bash
 # Test specific agent with custom input
-python test_agents.py --agent intent --query "Explain neural networks visually"
+uv run python test_agents.py --agent intent --query "Explain neural networks visually"
 
 # Test other agents
-python test_agents.py --agent decomposer
-python test_agents.py --agent planner
-python test_agents.py --agent codegen
-python test_agents.py --agent validator
-python test_agents.py --agent repair
-python test_agents.py --agent render
-python test_agents.py --agent critic
+uv run python test_agents.py --agent decomposer
+uv run python test_agents.py --agent planner
+uv run python test_agents.py --agent codegen
+uv run python test_agents.py --agent validator
+uv run python test_agents.py --agent repair
+uv run python test_agents.py --agent render
+uv run python test_agents.py --agent critic
 
 # Test full pipeline
-python test_agents.py --agent pipeline
+uv run python test_agents.py --agent pipeline
 
 # Save results to JSON
-python test_agents.py --agent intent --save
+uv run python test_agents.py --agent intent --save
 ```
 
 ## Agent Testing Details
@@ -112,7 +115,7 @@ python test_agents.py --agent intent --save
 
 2. **Integration Testing**: Test agent interactions
    ```bash
-   python test_agents.py --agent pipeline
+   uv run python test_agents.py --agent pipeline
    ```
 
 3. **Pipeline Testing**: Full end-to-end test
@@ -122,7 +125,7 @@ python test_agents.py --agent intent --save
 
 ### Debugging Failed Tests
 - Check individual log files in `logs/` directory
-- Use `python test_agents.py --agent <name> --save` to get JSON output
+- Use `uv run python test_agents.py --agent <name> --save` to get JSON output
 - Compare expected vs actual outputs
 
 ### Continuous Testing
@@ -159,6 +162,7 @@ OpenClassrooms/
 
 ```bash
 # Setup environment
+make sync
 make setup
 
 # Test agent you're working on

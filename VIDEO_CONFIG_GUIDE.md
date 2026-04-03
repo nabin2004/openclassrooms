@@ -14,7 +14,7 @@ The Manimator system now supports flexible configuration of:
 
 ### 1. Unlimited (Default)
 ```bash
-python set_video_config.py unlimited
+uv run python set_video_config.py unlimited
 ```
 - **Max scenes**: Unlimited
 - **Max duration**: Unlimited
@@ -24,7 +24,7 @@ python set_video_config.py unlimited
 
 ### 2. Conservative
 ```bash
-python set_video_config.py conservative
+uv run python set_video_config.py conservative
 ```
 - **Max scenes**: 10
 - **Max duration**: 300 seconds (5 minutes)
@@ -34,7 +34,7 @@ python set_video_config.py conservative
 
 ### 3. Educational
 ```bash
-python set_video_config.py educational
+uv run python set_video_config.py educational
 ```
 - **Max scenes**: 20
 - **Max duration**: 600 seconds (10 minutes)
@@ -47,18 +47,18 @@ python set_video_config.py educational
 ### Setting Configuration
 ```bash
 # Set to unlimited (no limits)
-python set_video_config.py unlimited
+uv run python set_video_config.py unlimited
 
 # Set to conservative (moderate limits)
-python set_video_config.py conservative
+uv run python set_video_config.py conservative
 
 # Set to educational (generous limits for teaching)
-python set_video_config.py educational
+uv run python set_video_config.py educational
 ```
 
 ### Checking Current Configuration
 ```bash
-python set_video_config.py [type]
+uv run python set_video_config.py [type]
 # Shows current settings after setting
 ```
 
@@ -101,22 +101,22 @@ animations: create up to 15 animations per scene
 
 ### Example 1: Unlimited Mode
 ```bash
-python set_video_config.py unlimited
-python manimator/agents/scene_decomposer.py
+uv run python set_video_config.py unlimited
+uv run python manimator/agents/scene_decomposer.py
 ```
 Output: 7 scenes, 300-second duration, long descriptive titles
 
 ### Example 2: Conservative Mode
 ```bash
-python set_video_config.py conservative
-python manimator/agents/scene_decomposer.py
+uv run python set_video_config.py conservative
+uv run python manimator/agents/scene_decomposer.py
 ```
 Output: 6 scenes, 240-second duration, concise titles
 
 ### Example 3: Educational Mode
 ```bash
-python set_video_config.py educational
-python manimator/agents/scene_decomposer.py
+uv run python set_video_config.py educational
+uv run python manimator/agents/scene_decomposer.py
 ```
 Output: More scenes, longer duration, detailed titles
 
@@ -153,21 +153,21 @@ print(f"Max duration: {config.max_duration_seconds}")
 make test-decomposer
 
 # Change to conservative
-python set_video_config.py conservative
+uv run python set_video_config.py conservative
 make test-decomposer
 
 # Change to educational  
-python set_video_config.py educational
+uv run python set_video_config.py educational
 make test-decomposer
 ```
 
 ### Pipeline Testing
 ```bash
 # Test full pipeline with different configs
-python set_video_config.py unlimited
+uv run python set_video_config.py unlimited
 make test-pipeline
 
-python set_video_config.py conservative
+uv run python set_video_config.py conservative
 make test-pipeline
 ```
 

@@ -1,20 +1,25 @@
-import os
 import sys
-import asyncio
 from pathlib import Path
-from dotenv import load_dotenv
 
 # Path configuration: making the project root discoverable
 CURRENT_FILE = Path(__file__).resolve()
 MANIMATOR_DIR = CURRENT_FILE.parent
 PROJECT_ROOT = MANIMATOR_DIR.parent
 
-# 1. Environment variables
-load_dotenv(MANIMATOR_DIR / ".env")
+# When executed as `python manimator/main.py`, sys.path[0] points to
+# the `manimator` directory. Remove it to avoid shadowing stdlib modules
+# like `logging` with `manimator/logging`.
+if sys.path and Path(sys.path[0]).resolve() == MANIMATOR_DIR:
+    sys.path.pop(0)
 
-# 2. Add Project Root to sys.path to resolve 'manimator.xxx' imports
+# 1. Environment variables
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+import asyncio
+from dotenv import load_dotenv
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 from manimator.pipeline.graph import pipeline
 
@@ -104,13 +109,31 @@ Ensure every concept is visually demonstrated, not just spoken
     
     # Run the compiled LangGraph pipeline
     input_state = {"raw_query": query}
+    pipeline_updates = {}
     
     try:
         async for event in pipeline.astream(input_state):
             for node, state in event.items():
                 print(f"==> Step Completed: {node}")
+                if isinstance(state, dict):
+                    pipeline_updates.update(state)
                 
         print("\n Animation generation pipeline complete.")
+
+        full_transcript = pipeline_updates.get("full_transcript")
+        if full_transcript:
+            print("\n--- Transcript (for TTS) ---")
+            print(full_transcript)
+            transcript_path = pipeline_updates.get("transcript_path")
+            if transcript_path:
+                print(f"\nTranscript saved to: {transcript_path}")
+
+        narrated = pipeline_updates.get("narrated_paths")
+        if narrated:
+            print("\n--- Narrated scene videos (voice synced to duration) ---")
+            for sid in sorted(narrated.keys()):
+                print(f"  scene {sid}: {narrated[sid]}")
+
     except Exception as e:
         print(f"\n Pipeline failed: {e}")
 

@@ -1,3 +1,5 @@
+import asyncio
+
 from langgraph.graph import StateGraph, END
 from manimator.pipeline.state import PipelineState
 from manimator.agents.intent_classifier import classify_intent
@@ -9,6 +11,8 @@ from manimator.agents.repair import repair_code
 from manimator.agents.critic import critique_render
 from manimator.contracts.validation import MAX_RETRIES
 from manimator.contracts.critic import MAX_REPLANS
+from manimator.audio.narration import build_narrated_scene_paths
+from manimator.audio.voiceover import voiceover_text_for_scene
 
 ##################################################
 #                NODES 
@@ -163,7 +167,38 @@ async def node_critique(state: PipelineState) -> dict:
 
 async def node_finalize(state: PipelineState) -> dict:
     # STUB: real video concatenation goes here
-    return {"output_video_path": "outputs/final.mp4"}
+    from pathlib import Path
+
+    output_dir = Path("outputs")
+    output_dir.mkdir(exist_ok=True)
+
+    scene_lookup = {}
+    if state.scene_plan:
+        scene_lookup = {scene.id: scene for scene in state.scene_plan.scenes}
+
+    scene_transcripts = {}
+    transcript_blocks = []
+
+    for spec in sorted(state.scene_specs, key=lambda s: s.scene_id):
+        scene = scene_lookup.get(spec.scene_id)
+        scene_title = scene.title if scene else spec.class_name
+
+        transcript = voiceover_text_for_scene(spec, scene)
+
+        scene_transcripts[spec.scene_id] = transcript
+        transcript_blocks.append(f"[Scene {spec.scene_id}: {scene_title}]\n{transcript}")
+
+    full_transcript = "\n\n".join(transcript_blocks)
+    transcript_path = output_dir / "transcript.txt"
+    transcript_path.write_text(full_transcript, encoding="utf-8")
+
+    return {
+        "output_video_path": "outputs/final.mp4",
+        "scene_transcripts": scene_transcripts,
+        "full_transcript": full_transcript,
+        "transcript_path": str(transcript_path),
+        "narrated_paths": dict(state.narrated_paths),
+    }
 
 ##################################################
 #                CONDITIONAL EDGES
@@ -188,11 +223,15 @@ def edge_after_validate(state: PipelineState) -> str:
 
 
 def edge_after_critique(state: PipelineState) -> str:
-    if not state.critic_result.replan_required:
-        return "finalize"
-    if state.replan_count >= MAX_REPLANS:
-        return "finalize"
-    return "replan"
+    if state.critic_result.replan_required and state.replan_count < MAX_REPLANS:
+        return "replan"
+    return "narrate"
+
+
+async def node_add_narration(state: PipelineState) -> dict:
+    """Synthesize KittenTTS from scene voiceovers and mux with rendered MP4s."""
+    narrated = await asyncio.to_thread(build_narrated_scene_paths, state)
+    return {"narrated_paths": narrated}
 
 ##################################################
 #                Build Graph
@@ -209,6 +248,7 @@ def build_pipeline() -> StateGraph:
     graph.add_node("repair", node_repair)
     graph.add_node("render", node_render)
     graph.add_node("critique", node_critique)
+    graph.add_node("narrate", node_add_narration)
     graph.add_node("finalize", node_finalize)
 
     graph.set_entry_point("classify")
@@ -227,9 +267,10 @@ def build_pipeline() -> StateGraph:
     graph.add_edge("repair", "validate")
     graph.add_edge("render", "critique")
     graph.add_conditional_edges("critique", edge_after_critique, {
-        "finalize": "finalize",
+        "narrate": "narrate",
         "replan": "plan",
     })
+    graph.add_edge("narrate", "finalize")
     graph.add_edge("finalize", END)
 
     return graph.compile()
