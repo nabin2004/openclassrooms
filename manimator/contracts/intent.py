@@ -28,3 +28,26 @@ class IntentResult(BaseModel):
         if not self.in_scope and self.reject_reason is None:
             raise ValueError("reject_reason is required when in_scope is False")
         return self
+
+
+class IntentClassificationPayload(BaseModel):
+    """Fields returned by the intent classifier LLM (no session metadata)."""
+
+    in_scope: bool
+    concept_type: ConceptType
+    modality: Modality
+    complexity: int = Field(ge=1, le=5)
+    reject_reason: str | None = None
+
+    @model_validator(mode="after")
+    def reject_reason_required_when_out_of_scope(self) -> "IntentClassificationPayload":
+        if not self.in_scope and self.reject_reason is None:
+            raise ValueError("reject_reason is required when in_scope is False")
+        return self
+
+    def into_result(self, raw_query: str, *, confidence: float = 1.0) -> IntentResult:
+        return IntentResult(
+            raw_query=raw_query,
+            confidence=confidence,
+            **self.model_dump(),
+        )

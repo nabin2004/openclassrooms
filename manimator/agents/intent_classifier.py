@@ -1,14 +1,11 @@
-import json
-import os
+import asyncio
 
-from amoeba.core.litellm_chat import acompletion_system_user
+from amoeba.core.agent import Agent
+from amoeba.core.memory import StatelessMemoryAdapter
 from amoeba.runtime import load_agent_env
-from manimator.contracts.intent import ConceptType, IntentResult, Modality
-from manimator.manim_utils import strip_markdown_code_blocks
+from manimator.contracts.intent import IntentClassificationPayload, IntentResult
 
 load_agent_env()
-
-MODEL = os.getenv("INTENT_CLASSIFIER_MODEL")
 
 SYSTEM_PROMPT = """You are an intent classifier for an AI math animation system.
 The system can ONLY animate topics in: mathematics, computer science, and AI/ML.
@@ -38,46 +35,33 @@ mixed = combination needed
 Return ONLY the JSON object. No explanation, no markdown, no extra text.
 """
 
-
 OUT_OF_SCOPE_TOPICS = [
     "biology", "heart", "blood", "anatomy", "chemistry", "physics experiments",
     "cooking", "history", "geography", "music", "art", "literature",
 ]
 
+_intent_agent = Agent(
+    name="intent_classifier",
+    role=SYSTEM_PROMPT,
+    model_env_key="INTENT_CLASSIFIER_MODEL",
+    default_model="groq/llama-3.1-8b-instant",
+    temperature=0.0,
+    memory=StatelessMemoryAdapter(),
+)
+
 
 async def classify_intent(raw_query: str) -> IntentResult:
-    raw = await acompletion_system_user(
-        model=MODEL,
-        system=SYSTEM_PROMPT,
-        user=f"Classify this query: {raw_query}",
-        temperature=0.0,
+    _intent_agent.reset_history()
+    payload = await _intent_agent.think_and_parse(
+        f"Classify this query: {raw_query}",
+        schema=IntentClassificationPayload,
         max_tokens=256,
-        error_context="Intent classifier",
     )
-    print("Classify", raw)
+    result = payload.into_result(raw_query)
+    print("Classify", result.model_dump())
+    return result
 
-    # # Strip markdown code blocks if model wraps response
-    # if raw.startswith("```"):
-    #     raw = raw.split("```")[1]
-    #     if raw.startswith("json"):
-    #         raw = raw[4:]
-    # raw = raw.strip()
-    raw = strip_markdown_code_blocks(raw)
-
-    data = json.loads(raw)
-
-    return IntentResult(
-        in_scope=data["in_scope"],
-        raw_query=raw_query,
-        concept_type=ConceptType(data["concept_type"]),
-        modality=Modality(data["modality"]),
-        complexity=int(data["complexity"]),
-        reject_reason=data.get("reject_reason"),
-        confidence=1.0,
-    )
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(classify_intent("What is a circle?"))
     asyncio.run(classify_intent("Teach me about the Multilayer perceptron?"))
-
