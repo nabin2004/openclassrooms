@@ -107,12 +107,14 @@ version = "0.1.0"
 source = { editable = "amoeba" }
 dependencies = [
     { name = "litellm" },
+    { name = "pydantic" },
     { name = "python-dotenv" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "litellm", specifier = ">=1.82.6" },
+    { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
 ]
 

@@ -60,11 +60,86 @@ class RecallResult:
 
 class InMemoryBackend(DagestanBackend):
     """
-    Fully functional in-memory backend.
-    Agents work completely with this — no Dagestan needed for development.
-    Replace with DagestanLiveBackend when Dagestan's API is finalized.
+    Minimal in-memory backend so Agent.think() works without Dagestan.
+    Snapshots are retained for optional recall; embedding/graph paths are no-ops.
     """
-    pass 
+
+    def __init__(self) -> None:
+        self._snapshots: dict[str, list[MemorySnapshot]] = {}
+        self._chunks: list[dict] = []
+
+    def write_snapshot(self, snap: MemorySnapshot) -> None:
+        self._snapshots.setdefault(snap.agent_name, []).append(snap)
+
+    def search_chunks(
+        self,
+        agent_name: str,
+        query: str,
+        top_k: int = 5,
+    ) -> list:
+        return []
+
+    def get_latest_snapshot(self, agent_name: str) -> Optional[MemorySnapshot]:
+        seq = self._snapshots.get(agent_name, [])
+        return seq[-1] if seq else None
+
+    def get_snapshots(
+        self,
+        agent_name: str,
+        since: Optional[datetime] = None,
+        limit: int = 10,
+    ) -> list[MemorySnapshot]:
+        seq = list(self._snapshots.get(agent_name, []))
+        if since is not None:
+            seq = [s for s in seq if s.timestamp >= since]
+        return seq[-limit:]
+
+    def write_chunk(
+        self,
+        agent_name: str,
+        text: str,
+        metadata: dict,
+    ) -> None:
+        self._chunks.append(
+            {"agent_name": agent_name, "text": text, "metadata": metadata}
+        )
+
+    def add_relation(self, entity_a: str, relation: str, entity_b: str) -> None:
+        pass
+
+    def graph_query(self, query: str, params: dict) -> Any:
+        return None
+
+
+class DagestanLiveBackend(DagestanBackend):
+    """Placeholder for a future Dagestan-backed implementation."""
+
+    def __init__(self, client: Any):
+        self._client = client
+
+
+class StatelessMemoryAdapter:
+    """
+    No recall and no snapshot persistence. Use for one-shot agents where each
+    call must not see prior turns or stored context.
+    """
+
+    def recall(
+        self,
+        agent_name: str,
+        query: str,
+        top_k: int = 5,
+    ) -> None:
+        return None
+
+    def snapshot(
+        self,
+        agent_name: str,
+        context: dict,
+        tags: list[str] | None = None,
+    ) -> None:
+        return None
+
 
 class DagestanAdapter:
     """

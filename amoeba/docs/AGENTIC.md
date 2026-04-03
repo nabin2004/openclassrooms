@@ -12,7 +12,9 @@ Amoeba is evolving into a small library of reusable pieces for LLM-backed agents
 
 - **`amoeba.core.litellm_chat.acompletion_system_user`** — Async helper for the common pattern: one system message, one user message, then return text. Raises `RuntimeError` on empty content; pass `error_context="Planner"` (or similar) so logs and failures name the caller. Extra keyword arguments are forwarded to `litellm.acompletion` (e.g. provider-specific options).
 
-- **`amoeba.core.llm.LLMClient`** — Stateful client with model from an env key or default, optional chat history, and memory hooks via `Agent`. It uses `completion_message_text` internally so `content` is never assumed to be a plain string.
+- **`amoeba.core.llm.LLMClient`** — Stateful client with model from an env key or default. `call()` accepts `max_tokens` and forwards extra kwargs to LiteLLM. Uses `completion_message_text` internally.
+
+- **`amoeba.core.agent.Agent`** — `role` is the system prompt; `think(user)` runs one turn (memory recall, LLM, snapshot, history). `think_and_parse` uses `safe_parse_json` and a Pydantic schema. For **stateless** classifiers, pass `memory=StatelessMemoryAdapter()` and call `reset_history()` before each request so prior turns are not sent to the model.
 
 ## Model output cleanup
 

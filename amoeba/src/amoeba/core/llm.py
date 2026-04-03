@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import litellm
 
@@ -25,15 +25,23 @@ class LLMClient:
         system: str,
         user: str,
         history: Optional[list] = None,
+        *,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
     ) -> str:
         messages = [{"role": "system", "content": system}]
         if history:
             messages.extend(history)
         messages.append({"role": "user", "content": user})
 
-        response = await litellm.acompletion(
-            model=self.model,
-            messages=messages,
-            temperature=self.temperature,
-        )
+        params: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            **kwargs,
+        }
+        if max_tokens is not None:
+            params["max_tokens"] = max_tokens
+
+        response = await litellm.acompletion(**params)
         return completion_message_text(response)
