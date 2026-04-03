@@ -46,6 +46,8 @@ packages = [
     "manimator.logging",
     "manimator.manim_utils",
     "manimator.pipeline",
+    "manimator.prompts",
+    "manimator.prompts.intent_classifier",
     "manimator.tests",
     "manimator.tests.agents",
     "manimator.tests.audio",

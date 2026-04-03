@@ -2,47 +2,23 @@ import asyncio
 
 from amoeba.core.agent import Agent
 from amoeba.core.memory import StatelessMemoryAdapter
+from amoeba.observability import log_llm_event
 from amoeba.runtime import load_agent_env
 from manimator.contracts.intent import IntentClassificationPayload, IntentResult
+from manimator.prompts.registry import get_intent_prompt
 
 load_agent_env()
-
-SYSTEM_PROMPT = """You are an intent classifier for an AI math animation system.
-The system can ONLY animate topics in: mathematics, computer science, and AI/ML.
-
-Given a user query, classify it and return a JSON object with exactly these fields:
-{
-    "in_scope": true or false,
-    "concept_type": one of "math", "cs", "ai", "mixed",
-    "modality": one of "2d", "3d", "graph", "mixed",
-    "complexity": integer 1-5,
-    "reject_reason": null or string explaining why out of scope
-}
-
-Complexity guide:
-1 = single concept (what is a circle)
-2 = simple process (how does binary search work)
-3 = multi-step concept (gradient descent, recursion)
-4 = complex system (transformer attention, dynamic programming)
-5 = multi-concept proof or derivation
-
-Modality guide:
-2d = flat animations, graphs, text
-3d = 3D surfaces, spatial concepts
-graph = network/tree/graph structures
-mixed = combination needed
-
-Return ONLY the JSON object. No explanation, no markdown, no extra text.
-"""
 
 OUT_OF_SCOPE_TOPICS = [
     "biology", "heart", "blood", "anatomy", "chemistry", "physics experiments",
     "cooking", "history", "geography", "music", "art", "literature",
 ]
 
+_ACTIVE_INTENT_PROMPT = get_intent_prompt()
+
 _intent_agent = Agent(
-    name="intent_classifier",
-    role=SYSTEM_PROMPT,
+    name=_ACTIVE_INTENT_PROMPT.name,
+    role=_ACTIVE_INTENT_PROMPT.system,
     model_env_key="INTENT_CLASSIFIER_MODEL",
     default_model="groq/llama-3.1-8b-instant",
     temperature=0.0,
@@ -58,7 +34,15 @@ async def classify_intent(raw_query: str) -> IntentResult:
         max_tokens=256,
     )
     result = payload.into_result(raw_query)
-    print("Classify", result.model_dump())
+    log_llm_event(
+        "intent_classification",
+        prompt_name=_ACTIVE_INTENT_PROMPT.name,
+        prompt_version=_ACTIVE_INTENT_PROMPT.version,
+        in_scope=result.in_scope,
+        concept_type=result.concept_type.value,
+        modality=result.modality.value,
+        complexity=result.complexity,
+    )
     return result
 
 
