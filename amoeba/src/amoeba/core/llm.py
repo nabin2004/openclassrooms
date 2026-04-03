@@ -1,6 +1,10 @@
 import os
 from typing import Optional
+
 import litellm
+
+from amoeba.core.responses import completion_message_text
+
 
 class LLMClient:
     def __init__(
@@ -32,4 +36,4 @@ class LLMClient:
             messages=messages,
             temperature=self.temperature,
         )
-        return response.choices[0].message.content.strip()
+        return completion_message_text(response)

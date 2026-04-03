@@ -12,7 +12,7 @@ def strip_fences(text: str) -> str:
         first_newline = content.find("\n")
         if first_newline != -1:
             maybe_lang = content[:first_newline].strip().lower()
-            if maybe_lang in {"json", "python", "js", "typescript"}:
+            if maybe_lang in {"json", "python", "py", "js", "typescript"}:
                 content = content[first_newline + 1:]
         return content.strip()
     return text
