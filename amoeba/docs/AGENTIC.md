@@ -1,6 +1,8 @@
 # Amoeba agentic primitives
 
-Amoeba is evolving into a small library of reusable pieces for LLM-backed agents. This document describes the stable, dependency-facing helpers. Higher-level orchestration (graphs, ticks, tools) lives under `amoeba.core` and `amoeba.graph` and will grow over time.
+For installation, patterns, best practices, gotchas, and experimental modules, see **[GUIDE.md](GUIDE.md)**.
+
+This page is a **short API reference** for stable, dependency-facing helpers. Higher-level orchestration (graphs, ticks, tools) lives under `amoeba.core` and `amoeba.graph` and will grow over time.
 
 ## Environment
 
