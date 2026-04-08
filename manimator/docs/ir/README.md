@@ -27,4 +27,26 @@ This folder is append/overwrite-safe: each pipeline node re-emits the current be
 - `full_transcript.json`: wrapper containing full transcript string
 
 ### Recommended future use
-- **Caching**: use `(raw_query, prompt_versions, config)` as a cache key; if `scene_plan.json` exists, you can skip decomposition.\n+- **Training data**: each artifact is a supervised signal. For example:\n+  - decomposer: `raw_query → scene_plan.json`\n+  - planner: `SceneEntry (+ feedback) → SceneSpec`\n+  - repair: `ValidationResult → fixed_code`\n+
+
+### Caching (future)
+- Suggested cache key inputs:
+  - `raw_query`
+  - prompt versions (`INTENT_CLASSIFIER_PROMPT_VERSION`, `SCENE_DECOMPOSER_PROMPT_VERSION`, `SCENE_PLANNER_PROMPT_VERSION`, `CODE_REPAIR_PROMPT_VERSION`)
+  - config profile (`MANIMATOR_VIDEO_CONFIG`) and other relevant env knobs
+- Suggested cache values:
+  - `intent.json` (skip intent stage)
+  - `scene_plan.json` (skip decomposer)
+  - `scene_specs.json` (skip planner)
+  - `generated_codes.json` + `code/*.py` (skip codegen)
+
+### Training / finetuning / RL datasets (future)
+Each IR edge is a supervised signal. Examples:
+- decomposer: `raw_query → scene_plan.json`
+- planner: `SceneEntry (+ feedback) → SceneSpec`
+- validator/repair loop: `ValidationResult → fixed_code`
+- critic: `(renders/keyframes + spec) → CriticResult`
+
+Practical dataset exports usually look like JSONL with fields:
+- `input` (prompt + context)
+- `output` (the target IR artifact)
+- `metadata` (run_id, prompt version, model, tokens/cost, timestamps)
