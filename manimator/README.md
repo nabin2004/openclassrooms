@@ -83,6 +83,7 @@ Outputs (typical):
   - `renders/scene_<id>.mp4` — per-scene renders (when Manim succeeds)
   - `audio/scene_<id>_narration.wav` — per-scene WAV intermediates (when TTS runs)
   - `narrated/scene_<id>.mp4` — per-scene video + TTS (when enabled)
+  - `ir/` — Intermediate Representation (IR) snapshots (JSON artifacts per stage)
   - `delivery/transcript.txt` — transcript for the run
   - `delivery/final.mp4` — **all scenes in order** (normalized + concatenated with ffmpeg) when sources exist
 
