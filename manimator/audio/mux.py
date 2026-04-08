@@ -1,12 +1,13 @@
-import subprocess
 from pathlib import Path
+
+from amoeba.subprocess import run_subprocess
 
 # Ignore sub-frame disagreements between ffprobe and filters.
 _DURATION_EPS = 0.06
 
 
 def ffprobe_duration_seconds(media: Path) -> float:
-    r = subprocess.run(
+    r = run_subprocess(
         [
             "ffprobe",
             "-v",
@@ -17,8 +18,6 @@ def ffprobe_duration_seconds(media: Path) -> float:
             "default=noprint_wrappers=1:nokey=1",
             str(media),
         ],
-        capture_output=True,
-        text=True,
         check=True,
     )
     return float(r.stdout.strip())
@@ -88,7 +87,7 @@ def mux_video_with_narration(video: Path, wav: Path, output: Path) -> None:
         "192k",
         str(output),
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
+    run_subprocess(cmd, check=True)
 
 
 # Backward-compatible name

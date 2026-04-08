@@ -1,8 +1,11 @@
-"""Load environment variables from the repo root and this package directory."""
+"""Backward-compatible env loader for Manimator.
+
+Prefer calling `amoeba.runtime.load_agent_env(...)` directly.
+"""
 
 from pathlib import Path
 
-from dotenv import load_dotenv
+from amoeba.runtime import load_agent_env
 
 _done = False
 
@@ -21,6 +24,5 @@ def ensure_manimator_env() -> None:
         return
     pkg_root = Path(__file__).resolve().parent
     repo_root = pkg_root.parent
-    load_dotenv(repo_root / ".env")
-    load_dotenv(pkg_root / ".env", override=True)
+    load_agent_env(dotenv_paths=[repo_root / ".env", pkg_root / ".env"])
     _done = True

@@ -1,100 +1,22 @@
-import json
 import os
 import re
 
-from amoeba.core.litellm_chat import acompletion_system_user
+import logging
+from amoeba.core.agent import Agent
+from amoeba.core.memory import StatelessMemoryAdapter
+from amoeba.exceptions import AmoebaError
 from amoeba.runtime import load_agent_env
-from amoeba.utils import strip_fences
 from manimator.contracts.scene_plan import SceneEntry
-from manimator.contracts.scene_spec import AnimationSpec, MobjectSpec, SceneSpec
+from manimator.contracts.llm_outputs import LLMPlannerPayload
+from manimator.contracts.scene_spec import AnimationSpec, CameraOp, MobjectSpec, SceneSpec
+from manimator.prompts.registry import get_scene_planner_prompt
 
 load_agent_env()
 
 MODEL = os.getenv("SCENE_PLANNER_MODEL", "groq/llama-3.1-8b-instant")
+log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """
-You are a Manim scene planner for a 3Blue1Brown-style CS education channel.
-
-Before writing a single object or animation, answer these three questions internally:
-1. What is the ONE image that, if the viewer remembered nothing else, lets them reconstruct the concept?
-2. What false intuition does the viewer hold right now that must be broken first?
-3. What is the moment of maximum surprise in this scene?
-
-Every object and animation must serve one of those three answers.
-If it does not, it should not exist.
-
-COMPOSITION LAWS — non-negotiable:
-- ONE hero element per scene. It lives at CENTER and owns 60% of screen space.
-- Supporting elements live LEFT (the question) and RIGHT (the insight).
-- Never place two equally-weighted elements side by side.
-- Every array: Rectangle cells, Text inside each cell, Index Text below each cell. Always.
-- Every pointer: Arrow object. ALWAYS animated with .animate.move_to(). Never teleports.
-- Every revelation scene must use MovingCameraScene or ZoomedScene — never plain Scene.
-
-COLOR SCHEMA — encode meaning, never decoration:
-- BLUE: data at rest, input, the thing being examined
-- GOLD: active operation, the mechanism, what is happening RIGHT NOW
-- GREEN: resolved, correct, confirmed output
-- RED: violation, error, boundary condition
-- GRAY: eliminated, already understood, background context
-
-TIMING LAWS:
-- FadeIn / GrowFromCenter: run_time=0.5   (simple appearance)
-- Write / DrawBorderThenFill: run_time=1.0   (important reveal)
-- Transform / ReplacementTransform: run_time=2.0   (key insight)
-- Wait() after EVERY revelation: 0.8 minimum — silence teaches
-- Never more than 3 animations without a Wait()
-
-ANIMATION VOCABULARY for CS concepts:
-- Highlight active element: set_fill(GOLD, opacity=0.8), run_time=0.5
-- Eliminate element: set_fill(GRAY, opacity=0.3), run_time=0.5
-- Pointer move: arrow.animate.move_to(target), run_time=0.6
-- Swap two elements: ArcBetweenPoints trajectory, run_time=1.5
-- Tree traversal: highlight node THEN edge THEN child — never simultaneously
-- Graph edge reveal: GrowFromPoint along edge direction
-- O(n) complexity: show N elements, then N labeled operations — make them COUNT
-- O(log n) complexity: show the HALVING — zoom out then zoom in repeatedly
-
-3-BEAT RHYTHM — every logical unit follows this pattern:
-  Beat 1 INTRODUCE: show the element (run_time=0.5)
-  Beat 2 OPERATE:   do the thing (run_time=1.0–2.0)
-  Beat 3 REVEAL:    show what it means (run_time=1.0) then Wait(0.8)
-  Total per cycle: 3–5 seconds
-
-Return ONLY valid JSON with this structure:
-
-{
-  "imports": ["MovingCameraScene", "Rectangle", "Text", "Arrow", "VGroup"],
-  "objects": [
-    {
-      "name": "array_cells",
-      "type": "VGroup",
-      "init_params": {},
-      "composition_role": "hero",
-      "position": "CENTER",
-      "color": "BLUE"
-    }
-  ],
-  "animations": [
-    {
-      "type": "GrowFromCenter",
-      "target": "array_cells",
-      "params": {},
-      "run_time": 0.5,
-      "beat": 1,
-      "purpose": "introduce the array as the hero element"
-    }
-    ],
-    "voiceover_script": "Narrate this scene in 80-140 words. Describe what appears, what changes, and why it matters. Use plain spoken language for TTS. If a deliberate pause helps, use [pause]."
-}
-
-Every animation MUST have a beat (1, 2, or 3) and a purpose field.
-Every object MUST have a composition_role (hero, supporting, context) and a position (LEFT, CENTER, RIGHT).
-voiceover_script is REQUIRED and must match the visual beats.
-If you cannot write a purpose for an animation, that animation does not belong in this scene.
-
-No explanations. Only JSON.
-"""
+_ACTIVE_PROMPT = get_scene_planner_prompt()
 
 FEEDBACK_ADDENDUM = """
 
@@ -108,7 +30,7 @@ Every feedback point must change at least one object or animation.
 
 
 async def plan_scene(scene: SceneEntry, feedback: str | None = None) -> SceneSpec:
-    system = SYSTEM_PROMPT
+    system = _ACTIVE_PROMPT.system
     if feedback:
         system += FEEDBACK_ADDENDUM
 
@@ -124,49 +46,62 @@ Every animation must have a beat and a purpose.
 Every object must have a composition_role and a position.
 Return voiceover_script for TTS."""
 
-    raw = await acompletion_system_user(
-        model=MODEL,
-        system=system,
-        user=user_prompt,
+    agent = Agent(
+        name="scene_planner",
+        role=system,
+        model_env_key="SCENE_PLANNER_MODEL",
+        default_model=MODEL,
         temperature=0.3,
-        error_context="Planner",
+        memory=StatelessMemoryAdapter(),
     )
-    print("[DEBUG] Raw LLM response (planner):", repr(raw))
-    raw = strip_fences(raw)
-
+    agent.reset_history()
     try:
-        data = json.loads(raw)
-
-        if not data.get("objects") or not data.get("animations"):
-            raise ValueError(f"Missing required fields in model output: {data}")
-
-        objects = [MobjectSpec(**obj) for obj in data.get("objects", [])]
-        animations = [AnimationSpec(**anim) for anim in data.get("animations", [])]
-
-        raw_title = scene.title
-        class_name = re.sub(r'[^a-zA-Z0-9]', '', raw_title)
-        if class_name:
-            class_name = class_name[0].upper() + class_name[1:]
-        else:
-            class_name = "SceneAuto"
-
-        voiceover_script = data.get("voiceover_script")
-        if voiceover_script is not None and not isinstance(voiceover_script, str):
-            voiceover_script = str(voiceover_script)
-
-        return SceneSpec(
-            scene_id=scene.id,
-            class_name=class_name,
-            scene_class=scene.scene_class,
-            budget=scene.budget,
-            imports=data.get("imports", []),
-            objects=objects,
-            animations=animations,
-            voiceover_script=voiceover_script,
+        payload = await agent.think_and_parse(
+            user_prompt,
+            schema=LLMPlannerPayload,
+            max_tokens=2048,
         )
+    except AmoebaError as e:
+        log.error("Planner failed: %s", e.format_detail())
+        raise
 
-    except Exception as e:
-        raise ValueError(f"Failed to parse SceneSpec: {e}\nRaw output:\n{raw}")
+    objects = [MobjectSpec(name=o.name, type=o.type, init_params=o.init_params) for o in payload.objects]
+    animations = [
+        AnimationSpec(
+            type=a.type,
+            target=a.target,
+            run_time=a.run_time or 1.0,
+            params=a.params,
+        )
+        for a in payload.animations
+    ]
+    camera_ops = [
+        CameraOp(type=op.type, phi=op.phi, theta=op.theta, zoom=op.zoom)
+        for op in payload.camera_ops
+    ]
+
+    raw_title = scene.title
+    class_name = re.sub(r"[^a-zA-Z0-9]", "", raw_title)
+    if class_name:
+        class_name = class_name[0].upper() + class_name[1:]
+    else:
+        class_name = "SceneAuto"
+
+    voiceover_script = payload.voiceover_script
+    if voiceover_script is not None and not isinstance(voiceover_script, str):
+        voiceover_script = str(voiceover_script)
+
+    return SceneSpec(
+        scene_id=scene.id,
+        class_name=class_name,
+        scene_class=scene.scene_class,
+        budget=scene.budget,
+        imports=payload.imports or [],
+        objects=objects,
+        animations=animations,
+        camera_ops=camera_ops,
+        voiceover_script=voiceover_script,
+    )
     
 if __name__ == "__main__":
     import asyncio

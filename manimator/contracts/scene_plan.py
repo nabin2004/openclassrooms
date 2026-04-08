@@ -33,6 +33,7 @@ class SceneEntry(BaseModel):
 
 
 class ScenePlan(BaseModel):
+    schema_version: str = "1.0.0"
     scene_count: int
     scenes: list[SceneEntry]
     transition_style: TransitionStyle

@@ -16,9 +16,15 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import argparse
 import asyncio
+import logging
+import uuid
 
 # Dotenv is applied in manimator/__init__.py (repo .env + manimator/.env).
+from amoeba.observability import get_logger as get_amoeba_logger
+from amoeba.observability import log_structured, set_trace_id
 from manimator.pipeline.graph import pipeline
+from manimator.logging import configure_logging, get_logger, log_exception
+from manimator.exceptions import ManimatorError
 
 DEFAULT_QUERY = """Teach me about Transformer architecture in detail"""
 
@@ -35,6 +41,26 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         help="Read the pipeline query from a UTF-8 text file.",
     )
+    p.add_argument(
+        "--log-level",
+        default=None,
+        help="Logging level (DEBUG, INFO, WARNING, ERROR). Overrides MANIMATOR_LOG_LEVEL.",
+    )
+    p.add_argument(
+        "--log-json",
+        action="store_true",
+        help="Emit JSON logs. Overrides MANIMATOR_LOG_JSON.",
+    )
+    p.add_argument(
+        "--log-file",
+        default=None,
+        help="Write logs to this file in addition to stderr. Overrides MANIMATOR_LOG_FILE.",
+    )
+    p.add_argument(
+        "--run-id",
+        default=None,
+        help="Optional run id for correlating logs (defaults to a UUID).",
+    )
     return p.parse_args()
 
 
@@ -46,6 +72,13 @@ async def main() -> None:
         pass
 
     args = _parse_args()
+    run_id = args.run_id or uuid.uuid4().hex
+
+    configure_logging(level=args.log_level, json_logs=bool(args.log_json), log_file=args.log_file)
+    log = get_logger("manimator.main", run_id=run_id)
+    set_trace_id(run_id)
+    log_structured(get_amoeba_logger(), logging.INFO, "manimator.run.start", run_id=run_id)
+
     if args.query_file is not None:
         query = args.query_file.read_text(encoding="utf-8")
     elif args.query is not None:
@@ -60,7 +93,7 @@ async def main() -> None:
     print(f"Processing query ({len(query)} chars): {preview}...\n")
 
     # Run the compiled LangGraph pipeline
-    input_state = {"raw_query": query}
+    input_state = {"raw_query": query, "run_id": run_id}
     pipeline_updates: dict = {}
 
     try:
@@ -93,9 +126,25 @@ async def main() -> None:
             print("(Contains transcript.txt; final.mp4 is all scenes concatenated when renders exist.)")
         if final_video:
             print(f"Combined video: {final_video}")
+        log_structured(
+            get_amoeba_logger(),
+            logging.INFO,
+            "manimator.run.completed",
+            run_id=run_id,
+            delivery_dir=pipeline_updates.get("delivery_dir"),
+            output_video_path=pipeline_updates.get("output_video_path"),
+        )
 
+    except ManimatorError as e:
+        log.error("Pipeline failed: %s", e)
+        if e.details:
+            log.debug("Error details: %s", e.details)
+        log_structured(get_amoeba_logger(), logging.ERROR, "manimator.run.failed", run_id=run_id, error=str(e))
+        raise
     except Exception as e:
-        print(f"\n Pipeline failed: {e}")
+        log_exception(log, "Pipeline crashed with an unexpected error.", exc=e, level=logging.ERROR)
+        log_structured(get_amoeba_logger(), logging.ERROR, "manimator.run.crashed", run_id=run_id, error=str(e))
+        raise
 
 
 if __name__ == "__main__":
@@ -103,3 +152,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n Execution interrupted by user.")
+    except ManimatorError:
+        raise SystemExit(2)
+    except Exception:
+        raise SystemExit(1)

@@ -4,6 +4,7 @@ MAX_REPLANS = 2
 DEFAULT_THRESHOLD = 0.6
 
 class CriticResult(BaseModel):
+    schema_version: str = "1.0.0"
     replan_required: bool
     failed_scene_ids: list[int] = Field(default_factory=list)
     r_visual: float = Field(ge=0.0, le=1.0)

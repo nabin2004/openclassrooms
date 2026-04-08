@@ -6,6 +6,7 @@ from manimator.audio.kitten_tts import synthesize_voiceover_to_wav
 from manimator.audio.mux import mux_video_with_narration
 from manimator.audio.tts_config import ffmpeg_available, is_tts_enabled, kittentts_available
 from manimator.audio.voiceover import voiceover_text_for_scene
+from manimator.paths import get_run_paths
 from manimator.pipeline.state import PipelineState
 
 
@@ -15,8 +16,8 @@ def build_narrated_scene_paths(state: PipelineState) -> dict[int, str]:
     for transcripts and mux it into a new MP4. Video keeps natural timing; if
     speech is longer, the last frame is held instead of slowing the whole scene.
     """
-    outputs_dir = Path("outputs")
-    outputs_dir.mkdir(exist_ok=True)
+    run_id = state.run_id or "unknown"
+    paths = get_run_paths(run_id)
 
     scene_lookup = {}
     if state.scene_plan:
@@ -50,8 +51,8 @@ def build_narrated_scene_paths(state: PipelineState) -> dict[int, str]:
 
         scene = scene_lookup.get(scene_id)
         text = voiceover_text_for_scene(spec, scene)
-        wav_path = outputs_dir / f"scene_{scene_id}_narration.wav"
-        out_path = outputs_dir / f"scene_{scene_id}_narrated.mp4"
+        wav_path = paths.audio_dir / f"scene_{scene_id}_narration.wav"
+        out_path = paths.narrated_dir / f"scene_{scene_id}.mp4"
 
         synthesize_voiceover_to_wav(text, wav_path)
         mux_video_with_narration(video, wav_path, out_path)

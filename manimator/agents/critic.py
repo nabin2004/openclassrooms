@@ -1,13 +1,12 @@
 import json
 import os
-from dotenv import load_dotenv
 import litellm
 
+import logging
 from manimator.contracts.critic import CriticResult, DEFAULT_THRESHOLD
 
-load_dotenv()
-
 MODEL = os.getenv("CRITIC_MODEL", "gpt-4o-mini")  # needs vision support
+log = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """
@@ -47,7 +46,7 @@ async def critique_render(
 ) -> CriticResult:
     # STUB IMPLEMENTATION: Since render is a stub, we'll do a basic critique
     # without actual image analysis
-    print("[DEBUG] Using stub critic implementation (no actual image analysis)")
+    log.debug("Using stub critic implementation (no actual image analysis)")
     
     # For now, assume the generated scenes are acceptable
     # In a real implementation, this would analyze the rendered frames

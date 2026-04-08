@@ -14,6 +14,7 @@ class ErrorType(str, Enum):
 MAX_RETRIES = 10  # Increased for unlimited mode
 
 class ValidationResult(BaseModel):
+    schema_version: str = "1.0.0"
     passed: bool
     scene_id: int = Field(ge=0)
     failing_code: str | None = None

@@ -1,34 +1,20 @@
 import json
 import os
 
+import logging
 from amoeba.core.litellm_chat import acompletion_system_user
 from amoeba.runtime import load_agent_env
 from amoeba.utils import strip_fences
 
 from manimator.contracts.validation import ValidationResult
+from manimator.prompts.registry import get_code_repair_prompt
 
 load_agent_env()
 
 MODEL = os.getenv("CODE_REPAIR_MODEL", "groq/llama-3.1-8b-instant")
+log = logging.getLogger(__name__)
 
-
-SYSTEM_PROMPT = """
-You are a Manim code repair assistant.
-
-You will be given:
-- Broken Manim Python code
-- The error type and message
-- The original scene specification
-
-Your job:
-- Fix the code so it runs correctly
-- Do NOT change the structure unless necessary
-- Do NOT remove animations or objects unless required
-- Keep it minimal and valid
-
-Return ONLY valid Python code.
-No explanations.
-"""
+_ACTIVE_PROMPT = get_code_repair_prompt()
 
 
 async def repair_code(validation: ValidationResult) -> str:
@@ -44,11 +30,11 @@ async def repair_code(validation: ValidationResult) -> str:
 
     raw = await acompletion_system_user(
         model=MODEL,
-        system=SYSTEM_PROMPT,
+        system=_ACTIVE_PROMPT.system,
         user=json.dumps(payload),
         temperature=0.1,
         error_context="Repair agent",
     )
-    print("[DEBUG] Raw LLM response (repair):", repr(raw))
+    log.debug("Raw LLM response (repair): %r", raw)
     fixed_code = strip_fences(raw)
     return fixed_code

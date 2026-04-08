@@ -78,12 +78,18 @@ make test-pipeline
 
 Outputs (typical):
 
-- `outputs/delivery/<timestamp>/final.mp4` — **all scenes in order** (normalized + concatenated with ffmpeg)
-- `outputs/delivery/<timestamp>/transcript.txt` — same transcript text, **in the same folder** as `final.mp4`
-- `outputs/transcript.txt` — copy of the transcript (backward compatibility)
-- `outputs/scene_*.mp4` — per-scene renders (when Manim succeeds)
-- `outputs/scene_*_narrated.mp4` — per-scene video + TTS (when TTS is enabled and ffmpeg is available)
-- `outputs/scene_*_narration.wav` — per-scene WAV intermediates (when TTS runs)
+- **Per-run structured outputs**: `outputs/runs/<run_id>/`
+  - `code/scene_<id>.py` — generated Manim code per scene
+  - `renders/scene_<id>.mp4` — per-scene renders (when Manim succeeds)
+  - `audio/scene_<id>_narration.wav` — per-scene WAV intermediates (when TTS runs)
+  - `narrated/scene_<id>.mp4` — per-scene video + TTS (when enabled)
+  - `delivery/transcript.txt` — transcript for the run
+  - `delivery/final.mp4` — **all scenes in order** (normalized + concatenated with ffmpeg) when sources exist
+
+- **Legacy delivery layout** (still used when running against the global `outputs/` root):
+  - `outputs/delivery/<timestamp>/final.mp4`
+  - `outputs/delivery/<timestamp>/transcript.txt`
+  - `outputs/transcript.txt`
 
 ## Tests (uv)
 

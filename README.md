@@ -128,3 +128,13 @@ uv run python set_video_config.py conservative
 - `AGENT_TESTING.md`: agent-level testing workflow
 - `VIDEO_CONFIG_GUIDE.md`: configuration profiles for scene/decomposition limits
 - `AGENTS.md`: coding-agent instructions for this repository
+
+```
+uv run --package manimator python -m manimator.main --query "explain gradient descent"
+```
+
+```
+uv run --package manimator python -m manimator.main --log-level DEBUG --log-json --log-file outputs/manimator.log
+```
+
+Manimator outputs are now grouped by run under `outputs/runs/<run_id>/` (code, renders, narration, and delivery in one folder).

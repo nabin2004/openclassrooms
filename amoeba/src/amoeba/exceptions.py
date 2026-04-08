@@ -85,3 +85,7 @@ class JSONParseError(AmoebaError):
 
 class StructuredOutputError(AmoebaError):
     """JSON parsed but does not match the expected Pydantic schema."""
+
+
+class SubprocessError(AmoebaError):
+    """External command failed (non-zero exit, timeout, or OS error)."""

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from amoeba.subprocess import run_subprocess
 from manimator.contracts.scene_spec import SceneSpec
 
 
 def _ffprobe_has_audio(path: Path) -> bool:
-    r = subprocess.run(
+    r = run_subprocess(
         [
             "ffprobe",
             "-v",
@@ -24,8 +24,6 @@ def _ffprobe_has_audio(path: Path) -> bool:
             "csv=p=0",
             str(path),
         ],
-        capture_output=True,
-        text=True,
         check=False,
     )
     return bool(r.stdout.strip())
@@ -83,7 +81,7 @@ def _normalize_segment(src: Path, dst: Path, height: int = 720) -> None:
             "-shortest",
             str(dst),
         ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
+    run_subprocess(cmd, check=True)
 
 
 def _concat_demuxer_copy(segments: list[Path], output: Path) -> None:
@@ -96,7 +94,7 @@ def _concat_demuxer_copy(segments: list[Path], output: Path) -> None:
             f.write(f"file '{p}'\n")
         list_path = f.name
     try:
-        subprocess.run(
+        run_subprocess(
             [
                 "ffmpeg",
                 "-y",
@@ -110,8 +108,6 @@ def _concat_demuxer_copy(segments: list[Path], output: Path) -> None:
                 "copy",
                 str(output),
             ],
-            capture_output=True,
-            text=True,
             check=True,
         )
     finally:
@@ -144,21 +140,32 @@ def build_delivery_package(
     outputs_root: Path | None = None,
 ) -> dict[str, str | None]:
     """
-    Create outputs/delivery/<timestamp>/ with transcript.txt and final.mp4 (all scenes).
-    Also writes outputs/transcript.txt for backward compatibility.
+    Create a delivery folder with transcript.txt and final.mp4 (all scenes).
+
+    - If ``outputs_root`` is the global ``outputs/`` folder, we keep the historical
+      timestamped layout: ``outputs/delivery/<timestamp>/`` and also write
+      ``outputs/transcript.txt`` for backward compatibility.
+    - If ``outputs_root`` is a per-run folder (e.g. ``outputs/runs/<run_id>/``),
+      we write to ``<outputs_root>/delivery/`` (no timestamp) so everything for a
+      run is easy to find in one place.
     """
     outputs_root = outputs_root or Path("outputs")
     outputs_root.mkdir(parents=True, exist_ok=True)
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    delivery_dir = outputs_root / "delivery" / stamp
+    if outputs_root.name == "outputs":
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        delivery_dir = outputs_root / "delivery" / stamp
+    else:
+        delivery_dir = outputs_root / "delivery"
     delivery_dir.mkdir(parents=True, exist_ok=True)
 
     transcript_delivery = delivery_dir / "transcript.txt"
     transcript_delivery.write_text(full_transcript, encoding="utf-8")
 
-    legacy_transcript = outputs_root / "transcript.txt"
-    legacy_transcript.write_text(full_transcript, encoding="utf-8")
+    legacy_transcript: Path | None = None
+    if outputs_root.name == "outputs":
+        legacy_transcript = outputs_root / "transcript.txt"
+        legacy_transcript.write_text(full_transcript, encoding="utf-8")
 
     sources = ordered_scene_video_sources(scene_specs, narrated_paths, rendered_paths)
     final_mp4 = delivery_dir / "final.mp4"
@@ -176,12 +183,12 @@ def build_delivery_package(
                 _concat_demuxer_copy(normalized, final_mp4)
             if final_mp4.is_file():
                 output_video_path = str(final_mp4.resolve())
-        except (subprocess.CalledProcessError, OSError):
+        except OSError:
             output_video_path = None
 
     return {
         "output_video_path": output_video_path,
         "transcript_path": str(transcript_delivery.resolve()),
         "delivery_dir": str(delivery_dir.resolve()),
-        "legacy_transcript_path": str(legacy_transcript.resolve()),
+        "legacy_transcript_path": str(legacy_transcript.resolve()) if legacy_transcript else None,
     }

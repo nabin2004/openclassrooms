@@ -2,6 +2,10 @@ import asyncio
 
 from langgraph.graph import StateGraph, END
 from manimator.pipeline.state import PipelineState
+from manimator.logging import get_logger, log_exception
+from manimator.paths import get_run_paths
+from amoeba.observability import get_logger as get_amoeba_logger
+from amoeba.observability import log_structured
 from manimator.agents.intent_classifier import classify_intent
 from manimator.agents.scene_decomposer import decompose_scenes
 from manimator.agents.planner import plan_scene
@@ -20,18 +24,34 @@ from manimator.video.delivery import build_delivery_package
 #################################################
 
 async def node_classify_intent(state: PipelineState) -> dict:
+    run_id = state.run_id or "unknown"
+    paths = get_run_paths(run_id)
+    log = get_logger(__name__, run_id=state.run_id, node="classify")
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="classify")
     intent = await classify_intent(state.raw_query)
     if not intent.in_scope:
-        return {"intent": intent, "error": intent.reject_reason}
-    return {"intent": intent}
+        log.info("Intent rejected: %s", intent.reject_reason)
+        log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="classify", ok=False)
+        return {"intent": intent, "error": intent.reject_reason, "run_dir": str(paths.run_dir)}
+    log.info("Intent accepted.")
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="classify", ok=True)
+    return {"intent": intent, "run_dir": str(paths.run_dir)}
 
 
 async def node_decompose_scenes(state: PipelineState) -> dict:
+    log = get_logger(__name__, run_id=state.run_id, node="decompose")
+    run_id = state.run_id or "unknown"
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="decompose")
     plan = await decompose_scenes(state.intent)
+    log.info("Decomposed into %s scenes.", getattr(plan, "scene_count", "?"))
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="decompose", scene_count=getattr(plan, "scene_count", None))
     return {"scene_plan": plan}
 
 
 async def node_plan_scenes(state: PipelineState) -> dict:
+    log = get_logger(__name__, run_id=state.run_id, node="plan")
+    run_id = state.run_id or "unknown"
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="plan")
     specs = []
     for scene in state.scene_plan.scenes:
         # Pass critic feedback if this is a re-plan
@@ -40,119 +60,148 @@ async def node_plan_scenes(state: PipelineState) -> dict:
             idx = state.failed_scene_ids.index(scene.id)
             if idx < len(state.critic_result.critic_feedback):
                 feedback = state.critic_result.critic_feedback[idx]
+        scene_log = get_logger(__name__, run_id=state.run_id, node="plan", scene_id=scene.id)
         spec = await plan_scene(scene, feedback=feedback)
+        scene_log.info("Planned scene %s (%s).", scene.id, spec.class_name)
         specs.append(spec)
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="plan", scene_specs=len(specs))
     return {"scene_specs": specs}
 
 async def node_generate_code(state: PipelineState) -> dict:
+    log = get_logger(__name__, run_id=state.run_id, node="codegen")
+    run_id = state.run_id or "unknown"
+    paths = get_run_paths(run_id)
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="codegen")
     codes = {}
+    code_paths: dict[int, str] = {}
     for spec in state.scene_specs:
+        scene_log = get_logger(__name__, run_id=state.run_id, node="codegen", scene_id=spec.scene_id)
         code = await generate_code(spec)
         codes[spec.scene_id] = code
-    return {"generated_codes": codes}
+        out_py = paths.code_dir / f"scene_{spec.scene_id}.py"
+        out_py.write_text(code or "", encoding="utf-8")
+        code_paths[spec.scene_id] = str(out_py.resolve())
+        scene_log.info("Generated code (%s chars).", len(code or ""))
+    log.info("Wrote scene code to %s", str(paths.code_dir))
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="codegen", scenes=len(code_paths))
+    return {"generated_codes": codes, "code_paths": code_paths, "run_dir": str(paths.run_dir)}
 
 
 async def node_validate(state: PipelineState) -> dict:
+    log = get_logger(__name__, run_id=state.run_id, node="validate")
+    run_id = state.run_id or "unknown"
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="validate")
     results = {}
     failed = []
     for spec in state.scene_specs:
         code = state.generated_codes[spec.scene_id]
         retry_count = state.retry_counts.get(spec.scene_id, 0)
+        scene_log = get_logger(__name__, run_id=state.run_id, node="validate", scene_id=spec.scene_id)
         result = await validate_code(code, spec, retry_count=retry_count)
         results[spec.scene_id] = result
         if not result.passed:
             failed.append(spec.scene_id)
+            scene_log.warning(
+                "Validation failed (type=%s line=%s): %s",
+                getattr(result.error_type, "value", None),
+                result.error_line,
+                result.error_message,
+            )
+        else:
+            scene_log.info("Validation passed.")
+    log.info("Validation complete. failed_scene_ids=%s", failed)
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="validate", failed_scene_ids=failed)
     return {"validation_results": results, "failed_scene_ids": failed}
 
 async def node_repair(state: PipelineState) -> dict:
+    log = get_logger(__name__, run_id=state.run_id, node="repair")
+    run_id = state.run_id or "unknown"
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="repair", failed_scene_ids=state.failed_scene_ids)
     new_codes = dict(state.generated_codes)
     new_retries = dict(state.retry_counts)
     for scene_id in state.failed_scene_ids:
         validation = state.validation_results[scene_id]
+        scene_log = get_logger(__name__, run_id=state.run_id, node="repair", scene_id=scene_id)
         repaired = await repair_code(validation)
         new_codes[scene_id] = repaired
         new_retries[scene_id] = new_retries.get(scene_id, 0) + 1
+        scene_log.info("Repaired code (%s chars). retry_count=%s", len(repaired or ""), new_retries[scene_id])
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="repair", repaired_scenes=list(state.failed_scene_ids))
     return {"generated_codes": new_codes, "retry_counts": new_retries}
 
 
 async def node_render(state: PipelineState) -> dict:
     import os
-    import subprocess
-    import tempfile
     from pathlib import Path
-    
-    # Create outputs directory
-    outputs_dir = Path("outputs")
-    outputs_dir.mkdir(exist_ok=True)
+
+    from amoeba.subprocess import run_subprocess
+
+    log = get_logger(__name__, run_id=state.run_id, node="render")
+    run_id = state.run_id or "unknown"
+    paths = get_run_paths(run_id)
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="render")
     
     rendered = {}
     
     for spec in state.scene_specs:
-        code = state.generated_codes[spec.scene_id]
-        
-        # Write the Manim code to a temporary file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write(code)
-            temp_file = f.name
+        scene_log = get_logger(__name__, run_id=state.run_id, node="render", scene_id=spec.scene_id)
+        code_path = state.code_paths.get(spec.scene_id) or str((paths.code_dir / f"scene_{spec.scene_id}.py").resolve())
+        if not Path(code_path).exists():
+            Path(code_path).write_text(state.generated_codes.get(spec.scene_id, ""), encoding="utf-8")
         
         try:
             # Render the scene using Manim
             scene_class = spec.class_name
-            output_file = f"outputs/scene_{spec.scene_id}.mp4"
+            output_file = paths.renders_dir / f"scene_{spec.scene_id}.mp4"
             
             cmd = [
                 "manim", 
-                temp_file, 
+                code_path,
                 scene_class,
                 "-qm",  # medium quality
-                "--output_file", f"scene_{spec.scene_id}"
+                "--output_file",
+                f"scene_{spec.scene_id}",
+                "--media_dir",
+                str(paths.manim_media_dir),
             ]
             
-            result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True
-            )
+            result = run_subprocess(cmd, check=False)
             
             if result.returncode == 0:
-                # Manim creates files in media/videos/ by default
-                # Look for the generated file in common locations
-                media_dir = Path("media/videos")
+                media_dir = paths.manim_media_dir / "videos"
                 if media_dir.exists():
-                    # Find the video file
                     for file in media_dir.rglob(f"*scene_{spec.scene_id}*.mp4"):
-                        file.rename(output_file)
+                        output_file.parent.mkdir(parents=True, exist_ok=True)
+                        file.replace(output_file)
                         break
                     else:
-                        # Try alternative naming
                         for file in media_dir.rglob(f"*{scene_class}*.mp4"):
-                            file.rename(output_file)
+                            output_file.parent.mkdir(parents=True, exist_ok=True)
+                            file.replace(output_file)
                             break
                 
-                if Path(output_file).exists():
-                    rendered[spec.scene_id] = output_file
-                    print(f"✅ Successfully rendered scene {spec.scene_id} to {output_file}")
+                if output_file.exists():
+                    rendered[spec.scene_id] = str(output_file.resolve())
+                    scene_log.info("Rendered to %s", str(output_file))
                 else:
-                    print(f"⚠️  Manim ran but output file not found at {output_file}")
-                    rendered[spec.scene_id] = output_file  # still return the path
+                    scene_log.warning("Manim succeeded but output not found at %s", str(output_file))
+                    rendered[spec.scene_id] = str(output_file.resolve())  # still return the path
             else:
-                print(f"❌ Failed to render scene {spec.scene_id}: {result.stderr}")
-                rendered[spec.scene_id] = output_file  # fallback path
+                scene_log.error("Manim failed (exit=%s). stderr=%s", result.returncode, (result.stderr or "").strip())
+                rendered[spec.scene_id] = str(output_file.resolve())  # fallback path
                 
         except Exception as e:
-            print(f"❌ Error rendering scene {spec.scene_id}: {e}")
-            rendered[spec.scene_id] = f"outputs/scene_{spec.scene_id}.mp4"  # fallback path
-            
-        finally:
-            # Clean up temporary file
-            try:
-                os.unlink(temp_file)
-            except:
-                pass
+            log_exception(scene_log, "Exception while rendering scene.", exc=e)
+            rendered[spec.scene_id] = str((paths.renders_dir / f"scene_{spec.scene_id}.mp4").resolve())  # fallback path
     
-    return {"rendered_paths": rendered}
+    log.info("Render step complete. rendered_scenes=%s", sorted(rendered.keys()))
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="render", rendered_scenes=sorted(rendered.keys()))
+    return {"rendered_paths": rendered, "run_dir": str(paths.run_dir)}
 
 async def node_critique(state: PipelineState) -> dict:
+    log = get_logger(__name__, run_id=state.run_id, node="critique")
+    run_id = state.run_id or "unknown"
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="critique")
     scene_ids = list(state.rendered_paths.keys())
     keyframes = list(state.rendered_paths.values())
     result = await critique_render(
@@ -160,6 +209,13 @@ async def node_critique(state: PipelineState) -> dict:
         keyframe_paths=keyframes,
         replan_count=state.replan_count,
     )
+    log.info(
+        "Critique complete. combined=%s replan_required=%s failed_scene_ids=%s",
+        result.combined_score,
+        result.replan_required,
+        result.failed_scene_ids,
+    )
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="critique", combined_score=result.combined_score, replan_required=result.replan_required)
     return {
         "critic_result": result,
         "failed_scene_ids": result.failed_scene_ids,
@@ -169,8 +225,10 @@ async def node_critique(state: PipelineState) -> dict:
 async def node_finalize(state: PipelineState) -> dict:
     from pathlib import Path
 
-    output_dir = Path("outputs")
-    output_dir.mkdir(exist_ok=True)
+    log = get_logger(__name__, run_id=state.run_id, node="finalize")
+    run_id = state.run_id or "unknown"
+    paths = get_run_paths(run_id)
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.start", run_id=run_id, node="finalize")
 
     scene_lookup = {}
     if state.scene_plan:
@@ -196,9 +254,11 @@ async def node_finalize(state: PipelineState) -> dict:
         dict(state.narrated_paths),
         dict(state.rendered_paths),
         full_transcript,
-        output_dir,
+        paths.run_dir,
     )
 
+    log.info("Delivery package built. delivery_dir=%s output_video_path=%s", pkg["delivery_dir"], pkg["output_video_path"])
+    log_structured(get_amoeba_logger(), 20, "pipeline.node.completed", run_id=run_id, node="finalize", delivery_dir=pkg["delivery_dir"], output_video_path=pkg["output_video_path"])
     return {
         "output_video_path": pkg["output_video_path"],
         "delivery_dir": pkg["delivery_dir"],
@@ -206,6 +266,7 @@ async def node_finalize(state: PipelineState) -> dict:
         "full_transcript": full_transcript,
         "transcript_path": pkg["transcript_path"],
         "narrated_paths": dict(state.narrated_paths),
+        "run_dir": str(paths.run_dir),
     }
 
 ##################################################

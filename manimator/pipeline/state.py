@@ -9,12 +9,15 @@ from manimator.contracts.critic import CriticResult
 class PipelineState:
     # Input
     raw_query: str = ""
+    run_id: str | None = None
+    run_dir: str | None = None
 
     # Agent outputs — populated as pipeline progresses
     intent: IntentResult | None = None
     scene_plan: ScenePlan | None = None
     scene_specs: list[SceneSpec] = field(default_factory=list)
     generated_codes: dict[int, str] = field(default_factory=dict)  # scene_id → code
+    code_paths: dict[int, str] = field(default_factory=dict)       # scene_id → code file path
     validation_results: dict[int, ValidationResult] = field(default_factory=dict)
     rendered_paths: dict[int, str] = field(default_factory=dict)   # scene_id → video path
     narrated_paths: dict[int, str] = field(default_factory=dict)   # scene_id → video+audio path

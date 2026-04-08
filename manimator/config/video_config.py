@@ -71,10 +71,6 @@ DEFAULT_CONFIG = VideoConfig.unlimited()
 def get_video_config() -> VideoConfig:
     """Get current video configuration"""
     import os
-    from dotenv import load_dotenv
-    
-    # Load environment variables
-    load_dotenv()
     
     # Check for environment variable override
     config_type = os.getenv("MANIMATOR_VIDEO_CONFIG", "unlimited").lower()

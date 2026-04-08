@@ -76,6 +76,7 @@ class CameraOp(BaseModel):
 
 
 class SceneSpec(BaseModel):
+    schema_version: str = "1.0.0"
     scene_id: int = Field(ge=0)
     class_name: str = Field(pattern=r"^[A-Z][a-zA-Z0-9]*$")  # PascalCase
     scene_class: SceneClass
