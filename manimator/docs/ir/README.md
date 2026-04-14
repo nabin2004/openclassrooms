@@ -41,7 +41,7 @@ Per-stage skip targets mirror the suggested cache values:
 
 - `intent.json`, `scene_plan.json`, `scene_specs.json`, `generated_codes.json`, `validation_results.json`, `rendered_paths.json`, `critic_result.json`, …
 
-See [`manimator/batch/README.md`](../../batch/README.md) for CLI flags, concurrency, and export.
+See [`manimator/batch/README.md`](../../batch/README.md) for CLI flags, concurrency, export, and **`manimator.batch.querygen`** to build large `queries.jsonl` files (for example ~2k prompts from bundled topics × templates).
 
 ### Training / finetuning / RL datasets (future)
 Each IR edge is a supervised signal. Examples:
