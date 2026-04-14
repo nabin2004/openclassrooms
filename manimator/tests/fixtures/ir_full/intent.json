@@ -1,0 +1,9 @@
+{
+  "in_scope": true,
+  "raw_query": "Batch fixture full IR.",
+  "concept_type": "cs",
+  "modality": "2d",
+  "complexity": 3,
+  "reject_reason": null,
+  "confidence": 0.99
+}

@@ -1,0 +1,9 @@
+{
+  "in_scope": true,
+  "raw_query": "Explain unit circles for a short lesson.",
+  "concept_type": "math",
+  "modality": "2d",
+  "complexity": 2,
+  "reject_reason": null,
+  "confidence": 1.0
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "fixture_run_minimal",
+  "raw_query": "Explain unit circles for a short lesson.",
+  "has_intent": true,
+  "has_scene_plan": false,
+  "scene_spec_count": 0,
+  "scene_ids": []
+}

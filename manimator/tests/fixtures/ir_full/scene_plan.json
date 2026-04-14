@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "scene_count": 1,
+  "scenes": [
+    {
+      "id": 0,
+      "title": "Intro",
+      "scene_class": "Scene",
+      "budget": "high",
+      "prerequisite_ids": []
+    }
+  ],
+  "transition_style": "cut",
+  "total_duration_target": 60
+}

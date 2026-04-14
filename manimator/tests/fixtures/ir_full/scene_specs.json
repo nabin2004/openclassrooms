@@ -1,0 +1,14 @@
+[
+  {
+    "schema_version": "1.0.0",
+    "scene_id": 0,
+    "class_name": "TestScene",
+    "scene_class": "Scene",
+    "imports": ["Scene"],
+    "objects": [{"name": "c", "type": "Circle", "init_params": {}}],
+    "animations": [{"type": "Create", "target": "c", "run_time": 1.0, "params": {}}],
+    "camera_ops": [],
+    "voiceover_script": null,
+    "budget": "low"
+  }
+]

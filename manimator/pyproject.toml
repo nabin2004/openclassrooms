@@ -58,4 +58,6 @@ packages = [
     "manimator.tests.prompts",
     "manimator.video",
     "manimator.observability",
+    "manimator.batch",
+    "manimator.tests.batch",
 ]

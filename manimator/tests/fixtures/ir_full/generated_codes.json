@@ -1,0 +1,3 @@
+{
+  "0": "from manim import *\n\nclass TestScene(Scene):\n    def construct(self):\n        pass\n"
+}

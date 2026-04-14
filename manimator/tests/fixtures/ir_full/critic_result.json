@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "replan_required": false,
+  "failed_scene_ids": [],
+  "r_visual": 0.5,
+  "r_semantic": 0.5,
+  "combined_score": 0.5,
+  "critic_feedback": [],
+  "keyframe_paths": [],
+  "replan_count": 0
+}
