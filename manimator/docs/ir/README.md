@@ -28,16 +28,20 @@ This folder is append/overwrite-safe: each pipeline node re-emits the current be
 
 ### Recommended future use
 
-### Caching (future)
-- Suggested cache key inputs:
-  - `raw_query`
-  - prompt versions (`INTENT_CLASSIFIER_PROMPT_VERSION`, `SCENE_DECOMPOSER_PROMPT_VERSION`, `SCENE_PLANNER_PROMPT_VERSION`, `CODE_REPAIR_PROMPT_VERSION`)
-  - config profile (`MANIMATOR_VIDEO_CONFIG`) and other relevant env knobs
-- Suggested cache values:
-  - `intent.json` (skip intent stage)
-  - `scene_plan.json` (skip decomposer)
-  - `scene_specs.json` (skip planner)
-  - `generated_codes.json` + `code/*.py` (skip codegen)
+### Caching (interactive + batch)
+
+**Interactive pipeline:** each node overwrites the IR snapshot under `ir/`; there is no cross-run cache yet.
+
+**Batch runner** (`python -m manimator.batch.runner`): resume skips a stage when the stage’s primary artifact exists **and** `ir/batch_cache.json` carries a `pipeline_fingerprint` matching the batch manifest. The fingerprint hashes:
+
+- prompt version env vars (`INTENT_CLASSIFIER_PROMPT_VERSION`, `SCENE_DECOMPOSER_PROMPT_VERSION`, `SCENE_PLANNER_PROMPT_VERSION`, `CODE_REPAIR_PROMPT_VERSION`)
+- serialized `VideoConfig` from `get_video_config()` plus `MANIMATOR_VIDEO_CONFIG`
+
+Per-stage skip targets mirror the suggested cache values:
+
+- `intent.json`, `scene_plan.json`, `scene_specs.json`, `generated_codes.json`, `validation_results.json`, `rendered_paths.json`, `critic_result.json`, …
+
+See [`manimator/batch/README.md`](../../batch/README.md) for CLI flags, concurrency, and export.
 
 ### Training / finetuning / RL datasets (future)
 Each IR edge is a supervised signal. Examples:
