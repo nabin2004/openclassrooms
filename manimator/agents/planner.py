@@ -1,11 +1,13 @@
+import asyncio
 import os
 import re
 
 import logging
 from amoeba.core.agent import Agent
 from amoeba.core.memory import StatelessMemoryAdapter
-from amoeba.exceptions import AmoebaError
+from amoeba.exceptions import AmoebaError, JSONParseError, LLMError, StructuredOutputError
 from amoeba.runtime import load_agent_env
+from manimator.agents.json_llm import response_format_json_object
 from manimator.contracts.scene_plan import SceneEntry
 from manimator.contracts.llm_outputs import LLMPlannerPayload
 from manimator.contracts.scene_spec import AnimationSpec, CameraOp, MobjectSpec, SceneSpec
@@ -17,6 +19,46 @@ MODEL = os.getenv("SCENE_PLANNER_MODEL", "groq/llama-3.1-8b-instant")
 log = logging.getLogger(__name__)
 
 _ACTIVE_PROMPT = get_scene_planner_prompt()
+
+async def _plan_scene_think_parse_with_retries(
+    *,
+    agent: Agent,
+    user_prompt: str,
+    scene_id: int,
+) -> LLMPlannerPayload:
+    """
+    Retry transient JSON / schema / empty failures (``SCENE_PLANNER_TRANSIENT_RETRIES``,
+    default 1 → up to 2 attempts per scene).
+    """
+    retries = max(0, int(os.getenv("SCENE_PLANNER_TRANSIENT_RETRIES", "1")))
+    extra = response_format_json_object(disable_env_var="SCENE_PLANNER_DISABLE_JSON_MODE")
+    last: BaseException | None = None
+    for attempt in range(retries + 1):
+        agent.reset_history()
+        try:
+            return await agent.think_and_parse(
+                user_prompt,
+                schema=LLMPlannerPayload,
+                max_tokens=2048,
+                **extra,
+            )
+        except (LLMError, JSONParseError, StructuredOutputError) as e:
+            last = e
+            if attempt >= retries:
+                raise
+            delay = min(5.0, 0.4 * (2**attempt))
+            log.warning(
+                "scene_planner.transient_retry scene_id=%s attempt=%s/%s delay_s=%.2f err=%s",
+                scene_id,
+                attempt + 1,
+                retries + 1,
+                delay,
+                e,
+            )
+            await asyncio.sleep(delay)
+    assert last is not None
+    raise last
+
 
 FEEDBACK_ADDENDUM = """
 
@@ -54,12 +96,11 @@ Return voiceover_script for TTS."""
         temperature=0.3,
         memory=StatelessMemoryAdapter(),
     )
-    agent.reset_history()
     try:
-        payload = await agent.think_and_parse(
-            user_prompt,
-            schema=LLMPlannerPayload,
-            max_tokens=2048,
+        payload = await _plan_scene_think_parse_with_retries(
+            agent=agent,
+            user_prompt=user_prompt,
+            scene_id=scene.id,
         )
     except AmoebaError as e:
         log.error("Planner failed: %s", e.format_detail())
@@ -105,6 +146,8 @@ Return voiceover_script for TTS."""
     
 if __name__ == "__main__":
     import asyncio
+    import json
+
     test_scene = SceneEntry(
         id=0,
         title="What is a Circle?",

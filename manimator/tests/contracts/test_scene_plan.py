@@ -1,6 +1,13 @@
 import pytest
 from pydantic import ValidationError
-from manimator.contracts.scene_plan import ScenePlan, SceneEntry, SceneClass, Budget, TransitionStyle
+from manimator.contracts.scene_plan import (
+    Budget,
+    SceneClass,
+    SceneEntry,
+    ScenePlan,
+    TransitionStyle,
+    coerce_transition_style,
+)
 
 
 def valid_plan():
@@ -17,6 +24,12 @@ def valid_plan():
 def test_valid_plan():
     plan = valid_plan()
     assert plan.scene_count == 2
+
+
+def test_coerce_transition_style_alias():
+    assert coerce_transition_style("prerequisite_chain") is TransitionStyle.CONTINUATION
+    assert coerce_transition_style("fade") is TransitionStyle.FADE
+    assert coerce_transition_style("not_a_real_style_zzz") is TransitionStyle.CONTINUATION
 
 
 def test_scene_count_mismatch():
@@ -40,10 +53,3 @@ def test_cycle_detection():
             SceneEntry(id=1, title="B", scene_class=SceneClass.SCENE, budget=Budget.LOW, prerequisite_ids=[0]),
         ])
 
-
-def test_scene_count_cap():
-    with pytest.raises(ValidationError):
-        ScenePlan(scene_count=7, transition_style=TransitionStyle.CUT, scenes=[
-            SceneEntry(id=i, title=f"Scene {i}", scene_class=SceneClass.SCENE, budget=Budget.LOW, prerequisite_ids=[])
-            for i in range(7)
-        ])

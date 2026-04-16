@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -124,69 +125,85 @@ async def acompletion_safe(
     )
 
     start = time.perf_counter()
-    try:
-        coro = litellm.acompletion(**litellm_kwargs)
-        if timeout is not None:
-            response = await asyncio.wait_for(coro, timeout=timeout)
-        else:
-            response = await coro
-    except (asyncio.TimeoutError, TimeoutError) as e:
-        latency_ms = (time.perf_counter() - start) * 1000
-        raise LLMTimeoutError(
-            context={
-                **redacted,
-                "latency_ms": latency_ms,
-                "timeout_s": timeout,
-            },
-        ) from e
-    except Exception as e:
-        latency_ms = (time.perf_counter() - start) * 1000
-        err = _map_llm_exception(
-            e,
-            {**redacted, "latency_ms": latency_ms},
-        )
-        raise err from e
+    # Higher default helps batched OpenRouter/Groq runs under concurrency (empty deltas).
+    max_empty_retries = max(0, int(os.getenv("AMOEBA_LLM_EMPTY_RETRIES", "6")))
+    attempt = 0
+    response: Any = None
+    text = ""
 
-    latency_ms = (time.perf_counter() - start) * 1000
-    usage = _usage_dict(response)
+    while True:
+        attempt += 1
+        try:
+            coro = litellm.acompletion(**litellm_kwargs)
+            if timeout is not None:
+                response = await asyncio.wait_for(coro, timeout=timeout)
+            else:
+                response = await coro
+        except (asyncio.TimeoutError, TimeoutError) as e:
+            latency_ms = (time.perf_counter() - start) * 1000
+            raise LLMTimeoutError(
+                context={
+                    **redacted,
+                    "latency_ms": latency_ms,
+                    "timeout_s": timeout,
+                },
+            ) from e
+        except Exception as e:
+            latency_ms = (time.perf_counter() - start) * 1000
+            err = _map_llm_exception(
+                e,
+                {**redacted, "latency_ms": latency_ms},
+            )
+            raise err from e
 
-    if max_total_tokens is not None:
-        total = _total_tokens(usage)
-        if total is not None and total > max_total_tokens:
-            raise LLMError(
-                f"Response exceeded token budget ({total} > {max_total_tokens})",
+        latency_ms = (time.perf_counter() - start) * 1000
+        usage = _usage_dict(response)
+
+        if max_total_tokens is not None:
+            total = _total_tokens(usage)
+            if total is not None and total > max_total_tokens:
+                raise LLMError(
+                    f"Response exceeded token budget ({total} > {max_total_tokens})",
+                    context={
+                        **redacted,
+                        "usage": usage,
+                        "latency_ms": latency_ms,
+                    },
+                    user_message="The model used more tokens than allowed for this call.",
+                )
+
+        try:
+            text = completion_message_text(response)
+        except Exception as e:
+            raise LLMResponseError(
+                "Could not extract text from LLM response",
+                context={
+                    **redacted,
+                    "latency_ms": latency_ms,
+                    "response_repr": repr(response)[:2000],
+                },
+            ) from e
+
+        if require_non_empty_text and not text and attempt <= max_empty_retries:
+            await asyncio.sleep(min(3.0, 0.4 * (2 ** (attempt - 1))))
+            continue
+
+        if require_non_empty_text and not text:
+            raise LLMResponseError(
+                "Model returned no usable text content",
                 context={
                     **redacted,
                     "usage": usage,
                     "latency_ms": latency_ms,
+                    "model": getattr(response, "model", None),
+                    "empty_attempts": attempt,
                 },
-                user_message="The model used more tokens than allowed for this call.",
+                user_message="The model returned an empty reply. Check the model and API keys.",
             )
+        break
 
-    try:
-        text = completion_message_text(response)
-    except Exception as e:
-        raise LLMResponseError(
-            "Could not extract text from LLM response",
-            context={
-                **redacted,
-                "latency_ms": latency_ms,
-                "response_repr": repr(response)[:2000],
-            },
-        ) from e
-
-    if require_non_empty_text and not text:
-        raise LLMResponseError(
-            "Model returned no usable text content",
-            context={
-                **redacted,
-                "usage": usage,
-                "latency_ms": latency_ms,
-                "model": getattr(response, "model", None),
-            },
-            user_message="The model returned an empty reply. Check the model and API keys.",
-        )
-
+    latency_ms = (time.perf_counter() - start) * 1000
+    usage = _usage_dict(response)
     model = getattr(response, "model", None)
     cost = _extract_cost(response)
     log_llm_event(

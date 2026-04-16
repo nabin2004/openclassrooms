@@ -24,6 +24,33 @@ class TransitionStyle(str, Enum):
     WIPE = "wipe"
 
 
+_TRANSITION_STYLE_ALIASES: dict[str, TransitionStyle] = {
+    # LLMs often invent labels; map to closest supported style.
+    "prerequisite_chain": TransitionStyle.CONTINUATION,
+    "prerequisite": TransitionStyle.CONTINUATION,
+    "chain": TransitionStyle.CONTINUATION,
+    "sequential": TransitionStyle.CONTINUATION,
+    "crossfade": TransitionStyle.FADE,
+    "dissolve": TransitionStyle.FADE,
+    "none": TransitionStyle.CUT,
+    "hard_cut": TransitionStyle.CUT,
+    "instant": TransitionStyle.CUT,
+}
+
+
+def coerce_transition_style(value: str | None) -> TransitionStyle:
+    """Map arbitrary model output to a valid :class:`TransitionStyle` (default: continuation)."""
+    if value is None or not str(value).strip():
+        return TransitionStyle.CONTINUATION
+    key = str(value).strip().lower().replace(" ", "_").replace("-", "_")
+    if key in _TRANSITION_STYLE_ALIASES:
+        return _TRANSITION_STYLE_ALIASES[key]
+    try:
+        return TransitionStyle(key)
+    except ValueError:
+        return TransitionStyle.CONTINUATION
+
+
 class SceneEntry(BaseModel):
     id: int = Field(ge=0)
     title: str
@@ -37,7 +64,7 @@ class ScenePlan(BaseModel):
     scene_count: int
     scenes: list[SceneEntry]
     transition_style: TransitionStyle
-    total_duration_target: int | None 
+    total_duration_target: int | None = None
 
     @model_validator(mode="after")
     def scene_count_matches_scenes(self) -> "ScenePlan":

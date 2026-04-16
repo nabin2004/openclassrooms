@@ -3,7 +3,7 @@ import asyncio
 
 from amoeba.core.agent import Agent
 from amoeba.core.memory import StatelessMemoryAdapter
-from amoeba.exceptions import LLMError
+from amoeba.exceptions import JSONParseError, LLMError, StructuredOutputError
 from amoeba.observability import log_llm_event, new_trace_id
 from amoeba.observability.tracing import log_trace_summary
 from amoeba.runtime import load_agent_env
@@ -13,6 +13,7 @@ from manimator.contracts.intent import (
     IntentResult,
     Modality,
 )
+from manimator.agents.json_llm import response_format_json_object
 from manimator.observability.metrics import append_metrics_jsonl
 from manimator.prompts.registry import get_intent_prompt
 
@@ -68,6 +69,49 @@ def _dry_run_result(raw_query: str) -> IntentResult:
     )
 
 
+async def _intent_think_parse_with_retries(
+    *,
+    user_msg: str,
+    model: str | None,
+    trace_id: str,
+) -> IntentClassificationPayload:
+    """
+    Retry transient empty responses and malformed JSON on the same model
+    (``INTENT_TRANSIENT_RETRIES``, default 1 → up to 2 attempts).
+    """
+    retries = max(0, int(os.getenv("INTENT_TRANSIENT_RETRIES", "1")))
+    extra = response_format_json_object(disable_env_var="INTENT_DISABLE_JSON_MODE")
+    last: BaseException | None = None
+    for attempt in range(retries + 1):
+        _intent_agent.reset_history()
+        kwargs: dict = {"max_tokens": 256, **extra}
+        if model:
+            kwargs["model"] = model
+        try:
+            return await _intent_agent.think_and_parse(
+                user_msg,
+                schema=IntentClassificationPayload,
+                **kwargs,
+            )
+        except (LLMError, JSONParseError, StructuredOutputError) as e:
+            last = e
+            if attempt >= retries:
+                raise
+            delay = min(5.0, 0.4 * (2**attempt))
+            log_llm_event(
+                "intent_classification.transient_retry",
+                trace_id=trace_id,
+                attempt=attempt + 1,
+                max_attempts=retries + 1,
+                delay_s=delay,
+                error=str(e),
+                model=model or os.getenv("INTENT_CLASSIFIER_MODEL", ""),
+            )
+            await asyncio.sleep(delay)
+    assert last is not None
+    raise last
+
+
 def _tokens_total(tokens: dict | None) -> int | None:
     if not tokens:
         return None
@@ -112,15 +156,14 @@ async def classify_intent(raw_query: str) -> IntentResult:
         )
         return result
 
-    first_error: LLMError | None = None
-    _intent_agent.reset_history()
+    first_error: BaseException | None = None
     try:
-        payload = await _intent_agent.think_and_parse(
-            user_msg,
-            schema=IntentClassificationPayload,
-            max_tokens=256,
+        payload = await _intent_think_parse_with_retries(
+            user_msg=user_msg,
+            model=None,
+            trace_id=trace_id,
         )
-    except LLMError as e:
+    except (LLMError, JSONParseError, StructuredOutputError) as e:
         first_error = e
         if not fallback:
             lr = _intent_agent.last_llm_response
@@ -152,15 +195,13 @@ async def classify_intent(raw_query: str) -> IntentResult:
             fallback_model=fallback,
             error=str(e),
         )
-        _intent_agent.reset_history()
         try:
-            payload = await _intent_agent.think_and_parse(
-                user_msg,
-                schema=IntentClassificationPayload,
-                max_tokens=256,
+            payload = await _intent_think_parse_with_retries(
+                user_msg=user_msg,
                 model=fallback,
+                trace_id=trace_id,
             )
-        except LLMError as e2:
+        except (LLMError, JSONParseError, StructuredOutputError) as e2:
             lr = _intent_agent.last_llm_response
             log_trace_summary(
                 event="intent_classification",

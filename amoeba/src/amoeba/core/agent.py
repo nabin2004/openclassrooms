@@ -99,6 +99,15 @@ class Agent:
             )
 
         data = safe_parse_json(raw)
+        if not isinstance(data, dict):
+            raise StructuredOutputError(
+                f"Model output for {target_schema.__name__} must be a JSON object, got {type(data).__name__}",
+                context={
+                    "agent": self.name,
+                    "raw_preview": raw[:2000],
+                },
+                user_message="The model returned JSON that was not an object (for example a bare array).",
+            )
         try:
             return target_schema(**data)
         except ValidationError as e:

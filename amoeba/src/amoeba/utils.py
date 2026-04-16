@@ -46,6 +46,14 @@ def safe_parse_json(raw: str, *, preview_chars: int = 500) -> Any:
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as e:
+        # Fallback: many models wrap JSON with a short preamble/epilogue.
+        # Try to extract the first balanced JSON object/array and parse that.
+        extracted = _extract_first_json(cleaned)
+        if extracted is not None:
+            try:
+                return json.loads(extracted)
+            except json.JSONDecodeError:
+                pass
         _json_log.warning(
             "json.parse.failed trace_id=%s error=%s preview=%s",
             tid,
@@ -61,3 +69,48 @@ def safe_parse_json(raw: str, *, preview_chars: int = 500) -> Any:
             },
             user_message="The model returned invalid JSON.",
         ) from e
+
+
+def _extract_first_json(text: str) -> str | None:
+    """
+    Return the first balanced JSON object/array substring, if any.
+
+    This is a best-effort extractor to tolerate harmless preambles like
+    "Sure, here's the JSON:" while keeping strict JSON decoding.
+    """
+    s = text.strip()
+    if not s:
+        return None
+    start_candidates = []
+    for ch in ("{", "["):
+        idx = s.find(ch)
+        if idx != -1:
+            start_candidates.append(idx)
+    if not start_candidates:
+        return None
+    start = min(start_candidates)
+    opener = s[start]
+    closer = "}" if opener == "{" else "]"
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(s)):
+        c = s[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_str = False
+            continue
+        if c == '"':
+            in_str = True
+            continue
+        if c == opener:
+            depth += 1
+        elif c == closer:
+            depth -= 1
+            if depth == 0:
+                return s[start : i + 1]
+    return None
