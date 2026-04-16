@@ -1,0 +1,9 @@
+{
+  "complexity": 2,
+  "concept_type": "cs",
+  "confidence": 1.0,
+  "in_scope": true,
+  "modality": "2d",
+  "raw_query": "Illustrate binary search step by step for beginners.",
+  "reject_reason": null
+}

@@ -1,0 +1,43 @@
+{
+  "scene_count": 5,
+  "scenes": [
+    {
+      "budget": "high",
+      "id": 0,
+      "prerequisite_ids": [],
+      "scene_class": "MovingCameraScene",
+      "title": "The linear trap"
+    },
+    {
+      "budget": "high",
+      "id": 1,
+      "prerequisite_ids": [],
+      "scene_class": "ZoomedScene",
+      "title": "The elimination insight"
+    },
+    {
+      "budget": "high",
+      "id": 2,
+      "prerequisite_ids": [],
+      "scene_class": "Scene",
+      "title": "The comparison rule"
+    },
+    {
+      "budget": "high",
+      "id": 3,
+      "prerequisite_ids": [],
+      "scene_class": "MovingCameraScene",
+      "title": "The logarithmic collapse"
+    },
+    {
+      "budget": "high",
+      "id": 4,
+      "prerequisite_ids": [],
+      "scene_class": "Scene",
+      "title": "The scale reality"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "total_duration_target": 180,
+  "transition_style": "continuation"
+}

@@ -1,0 +1,52 @@
+{
+  "scene_count": 5,
+  "scenes": [
+    {
+      "budget": "medium",
+      "id": 0,
+      "prerequisite_ids": [],
+      "scene_class": "MovingCameraScene",
+      "title": "Why checking every element feels necessary"
+    },
+    {
+      "budget": "medium",
+      "id": 1,
+      "prerequisite_ids": [
+        0
+      ],
+      "scene_class": "Scene",
+      "title": "How can skipping elements possibly work?"
+    },
+    {
+      "budget": "low",
+      "id": 2,
+      "prerequisite_ids": [
+        1
+      ],
+      "scene_class": "Scene",
+      "title": "How do you know which half to keep?"
+    },
+    {
+      "budget": "medium",
+      "id": 3,
+      "prerequisite_ids": [
+        2
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "What if the element isn't there?"
+    },
+    {
+      "budget": "low",
+      "id": 4,
+      "prerequisite_ids": [
+        1,
+        2
+      ],
+      "scene_class": "Scene",
+      "title": "Why must the list be sorted?"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "total_duration_target": 125,
+  "transition_style": "continuation"
+}

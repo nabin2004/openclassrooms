@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": false,
+  "raw_query": "Summarize prerequisites needed before learning binary search.",
+  "run_id": "2f9faaa4e04e951d",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T16:13:00.820364+00:00"
+}

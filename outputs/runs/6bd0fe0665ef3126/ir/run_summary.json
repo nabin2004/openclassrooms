@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": true,
+  "raw_query": "Teach binary search visually in under three minutes of narration.",
+  "run_id": "6bd0fe0665ef3126",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T16:02:27.164172+00:00"
+}

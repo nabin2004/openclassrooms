@@ -1,0 +1,9 @@
+{
+  "complexity": 2,
+  "concept_type": "cs",
+  "confidence": 1.0,
+  "in_scope": true,
+  "modality": "2d",
+  "raw_query": "Show the core algorithm or idea behind binary search.",
+  "reject_reason": null
+}

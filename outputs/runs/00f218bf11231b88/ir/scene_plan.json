@@ -1,0 +1,51 @@
+{
+  "scene_count": 5,
+  "scenes": [
+    {
+      "budget": "low",
+      "id": 0,
+      "prerequisite_ids": [],
+      "scene_class": "Scene",
+      "title": "The phonebook paradox"
+    },
+    {
+      "budget": "low",
+      "id": 1,
+      "prerequisite_ids": [
+        0
+      ],
+      "scene_class": "Scene",
+      "title": "The power of sorted order"
+    },
+    {
+      "budget": "medium",
+      "id": 2,
+      "prerequisite_ids": [
+        1
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "The halving visualization"
+    },
+    {
+      "budget": "medium",
+      "id": 3,
+      "prerequisite_ids": [
+        2
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "The index arithmetic"
+    },
+    {
+      "budget": "low",
+      "id": 4,
+      "prerequisite_ids": [
+        3
+      ],
+      "scene_class": "Scene",
+      "title": "The termination guarantee"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "total_duration_target": 170,
+  "transition_style": "continuation"
+}

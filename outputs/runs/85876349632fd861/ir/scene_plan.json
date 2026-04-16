@@ -1,0 +1,51 @@
+{
+  "scene_count": 5,
+  "scenes": [
+    {
+      "budget": "high",
+      "id": 0,
+      "prerequisite_ids": [],
+      "scene_class": "MovingCameraScene",
+      "title": "The exhaustion of checking everything"
+    },
+    {
+      "budget": "high",
+      "id": 1,
+      "prerequisite_ids": [
+        0
+      ],
+      "scene_class": "Scene",
+      "title": "The sorted superpower"
+    },
+    {
+      "budget": "high",
+      "id": 2,
+      "prerequisite_ids": [
+        1
+      ],
+      "scene_class": "MovingCameraScene",
+      "title": "The middle comparison"
+    },
+    {
+      "budget": "high",
+      "id": 3,
+      "prerequisite_ids": [
+        2
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "The logarithmic collapse"
+    },
+    {
+      "budget": "high",
+      "id": 4,
+      "prerequisite_ids": [
+        3
+      ],
+      "scene_class": "Scene",
+      "title": "The final verdict"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "total_duration_target": 145,
+  "transition_style": "continuation"
+}

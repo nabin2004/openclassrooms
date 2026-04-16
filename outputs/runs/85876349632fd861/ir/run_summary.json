@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": true,
+  "raw_query": "Illustrate binary search step by step for beginners.",
+  "run_id": "85876349632fd861",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T16:03:15.398123+00:00"
+}

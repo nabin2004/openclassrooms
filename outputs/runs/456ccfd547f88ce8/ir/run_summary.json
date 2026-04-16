@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": true,
+  "raw_query": "Explain binary search for a short educational animation.",
+  "run_id": "456ccfd547f88ce8",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T16:00:11.886783+00:00"
+}

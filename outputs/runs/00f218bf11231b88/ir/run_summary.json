@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": true,
+  "raw_query": "Show the core algorithm or idea behind binary search.",
+  "run_id": "00f218bf11231b88",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T16:07:25.976340+00:00"
+}

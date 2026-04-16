@@ -137,4 +137,8 @@ uv run --package manimator python -m manimator.main --query "explain gradient de
 uv run --package manimator python -m manimator.main --log-level DEBUG --log-json --log-file outputs/manimator.log
 ```
 
+```
+uv run --package manimator python -m manimator.batch.runner   --input data/batch_queries_2k.jsonl   --batch-id dataset_2k_v1   --profile through_critic   --concurrency 4   --render-concurrency
+```
+
 Manimator outputs are now grouped by run under `outputs/runs/<run_id>/` (code, renders, narration, IR snapshots, and delivery in one folder).

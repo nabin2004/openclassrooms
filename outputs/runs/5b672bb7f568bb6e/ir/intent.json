@@ -1,0 +1,9 @@
+{
+  "complexity": 2,
+  "concept_type": "cs",
+  "confidence": 1.0,
+  "in_scope": true,
+  "modality": "2d",
+  "raw_query": "Give an intuition-first explanation of binary search with simple diagrams.",
+  "reject_reason": null
+}

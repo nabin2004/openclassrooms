@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": true,
+  "raw_query": "Give an intuition-first explanation of binary search with simple diagrams.",
+  "run_id": "5b672bb7f568bb6e",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T16:00:58.790516+00:00"
+}

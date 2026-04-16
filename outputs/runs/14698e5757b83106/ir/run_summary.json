@@ -1,0 +1,10 @@
+{
+  "has_intent": true,
+  "has_scene_plan": false,
+  "raw_query": "Create a Manim-friendly lesson outline for binary search.",
+  "run_id": "14698e5757b83106",
+  "scene_ids": [],
+  "scene_spec_count": 0,
+  "schema_version": "1.0.0",
+  "ts_utc": "2026-04-16T15:58:39.006867+00:00"
+}

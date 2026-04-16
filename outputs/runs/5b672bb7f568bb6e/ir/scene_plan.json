@@ -1,0 +1,52 @@
+{
+  "scene_count": 5,
+  "scenes": [
+    {
+      "budget": "low",
+      "id": 0,
+      "prerequisite_ids": [],
+      "scene_class": "Scene",
+      "title": "Why checking the middle first feels wrong"
+    },
+    {
+      "budget": "medium",
+      "id": 1,
+      "prerequisite_ids": [
+        0
+      ],
+      "scene_class": "Scene",
+      "title": "The elimination that makes middle powerful"
+    },
+    {
+      "budget": "medium",
+      "id": 2,
+      "prerequisite_ids": [
+        1
+      ],
+      "scene_class": "MovingCameraScene",
+      "title": "The repeated halving in action"
+    },
+    {
+      "budget": "medium",
+      "id": 3,
+      "prerequisite_ids": [
+        2
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "The logarithmic scale surprise"
+    },
+    {
+      "budget": "low",
+      "id": 4,
+      "prerequisite_ids": [
+        0,
+        1
+      ],
+      "scene_class": "Scene",
+      "title": "When this breaks \u2014 the sorted requirement"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "total_duration_target": 185,
+  "transition_style": "continuation"
+}

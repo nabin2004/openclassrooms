@@ -1,0 +1,54 @@
+{
+  "scene_count": 5,
+  "scenes": [
+    {
+      "budget": "medium",
+      "id": 0,
+      "prerequisite_ids": [],
+      "scene_class": "Scene",
+      "title": "Why you don't need to see every element"
+    },
+    {
+      "budget": "medium",
+      "id": 1,
+      "prerequisite_ids": [
+        0
+      ],
+      "scene_class": "Scene",
+      "title": "The pivot as a gatekeeper"
+    },
+    {
+      "budget": "medium",
+      "id": 2,
+      "prerequisite_ids": [
+        1
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "The exponential collapse"
+    },
+    {
+      "budget": "low",
+      "id": 3,
+      "prerequisite_ids": [
+        2
+      ],
+      "scene_class": "ZoomedScene",
+      "title": "The empty set"
+    },
+    {
+      "budget": "medium",
+      "id": 4,
+      "prerequisite_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "scene_class": "MovingCameraScene",
+      "title": "The complete data flow"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "total_duration_target": 165,
+  "transition_style": "continuation"
+}
