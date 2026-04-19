@@ -129,6 +129,12 @@ uv run python set_video_config.py conservative
 - `VIDEO_CONFIG_GUIDE.md`: configuration profiles for scene/decomposition limits
 - `AGENTS.md`: coding-agent instructions for this repository
 
+### Architecture
+
+- [`docs/migration-to-subagent-pipeline.md`](docs/migration-to-subagent-pipeline.md): proposed migration from the current node-per-stage LangGraph DAG to a parallel subagent + VLM-judge pipeline (why, how, and a full tooling audit).
+- [`docs/PROJECT_FORWARD.md`](docs/PROJECT_FORWARD.md): unsentimental engineering assessment of the repo.
+- [`manimator/AGENTIC_ARCHITECTURE_GUIDE.md`](manimator/AGENTIC_ARCHITECTURE_GUIDE.md): original agentic architecture guide.
+
 ```
 uv run --package manimator python -m manimator.main --query "explain gradient descent"
 ```
@@ -142,3 +148,8 @@ uv run --package manimator python -m manimator.batch.runner   --input data/batch
 ```
 
 Manimator outputs are now grouped by run under `outputs/runs/<run_id>/` (code, renders, narration, IR snapshots, and delivery in one folder).
+
+
+```
+uv run --package manimator python -m manimator.pipeline.export_graph_png
+```

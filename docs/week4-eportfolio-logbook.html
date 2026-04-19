@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Week 4 Logbook — Nabin Oli (23189629)</title>
+</head>
+<body>
+
+<article>
+  <header>
+    <h1>BCU E-Portfolios — Logbook</h1>
+    <p><strong>Final Year Project — Nabin Oli</strong><br>
+    <strong>Logbook — Final Year Individual Honors project</strong></p>
+  </header>
+
+  <hr>
+
+  <section>
+    <h2>Week 4: Finetuning pipeline initialization and SFT dataset generation pipeline — Nabin Oli (23189629)</h2>
+    <p><strong>Posted by</strong> Nabin Oli on 19 April 2026 at 14:00<br>
+    <strong>Last updated</strong> 19 April 2026 at 14:30</p>
+
+    <p><em>Disclaimer: The following links, especially GitHub links, may change or become unavailable over time due to ongoing development. The links provided reflect the progress at the time of writing.</em></p>
+
+    <p>This week focused on <strong>initializing the post-training / finetuning track</strong> (tooling choices, reproducibility, and how training will connect to the existing Manimator IR pipeline) and on <strong>standing up a supervised fine-tuning (SFT) dataset generation pipeline</strong> so we can export per-stage <strong>JSONL supervision files</strong> from batch runs—aligned with Phase 1 Week 4 in the project roadmap (synthetic data → first training bundle).</p>
+
+    <h3>Supervisor’s suggestion (carried forward / refined)</h3>
+    <ul>
+      <li>Study related work on <strong>Manim-based video generators</strong> driven by LLMs and collect <strong>evaluation metrics</strong> suitable for structured outputs (JSON plans, code, renders).</li>
+      <li><strong>Start local fine-tuning</strong> in a controlled way: anchor on one base model class, define train/val splits, and iterate on <strong>data quality</strong> before scaling GPU time.</li>
+      <li>Continue work on <strong>metrics for evaluating the Intermediate Representation</strong> (schema validity, stage-wise success, and downstream render success).</li>
+    </ul>
+
+    <h3>Deliverables and progress</h3>
+
+    <h4>Finetuning pipeline — initialization</h4>
+    <ul>
+      <li>Captured a <strong>lecture-facing finetuning playbook</strong> (stack options, QLoRA/LoRA, TRL/Unsloth/Axolotl-style workflows, eval discipline) so experiments stay comparable as the project moves from API baselines to local weights.</li>
+      <li>Aligned initialization work with the <strong>strategic roadmap</strong>: Phase 1 closes with a <strong>training-ready export</strong>; Phase 2 targets <strong>local fine-tuning</strong> (director/planner first), using the same JSONL shapes as batch exports.</li>
+      <li><strong>Links:</strong> <a href="https://github.com/nabin2004/openclassrooms/blob/main/docs/finetuning_playbook.md">Finetuning playbook</a> | <a href="https://github.com/nabin2004/openclassrooms/blob/main/STRATEGIC_ROADMAP.md">Strategic roadmap (Phase 1–2)</a></li>
+    </ul>
+
+    <h4>SFT dataset generation pipeline (batch IR → JSONL)</h4>
+    <ul>
+      <li>Used the <strong>Manimator batch IR pipeline</strong> to generate large prompt lists (<strong><code>querygen</code></strong>), run the <strong>same contract-first pipeline</strong> as interactive mode (<strong><code>runner</code></strong> with profiles such as through critic vs full delivery), and <strong>export per-stage JSONL</strong> for analysis or SFT.</li>
+      <li>Documented end-to-end operation: pilot runs, resume semantics, concurrency, and export CLI—so dataset builds are <strong>repeatable</strong> and suitable for versioning (<code>batch-id</code>, manifests, IR under <code>outputs/runs/&lt;run_id&gt;/</code>).</li>
+      <li><strong>Links:</strong> <a href="https://github.com/nabin2004/openclassrooms/blob/main/manimator/batch/README.md">Batch IR README</a> | <a href="https://github.com/nabin2004/openclassrooms/blob/main/manimator/batch/export.py">Batch export module</a></li>
+    </ul>
+
+    <h3>Overall progress summary</h3>
+    <ul>
+      <li><strong>Bridged research notes to executable workflow:</strong> finetuning is no longer only a roadmap bullet—initialization is captured in-repo and tied to measurable exports.</li>
+      <li><strong>Unblocked SFT data:</strong> the batch runner + export path turns pipeline stages into <strong>supervision examples</strong> (per-stage JSONL) instead of one-off JSON in logs.</li>
+      <li><strong>Next focus:</strong> narrow the first <strong>target stage</strong> for LoRA/SFT (e.g. director vs planner), freeze a <strong>schema_version</strong> convention for training rows, and stand up a <strong>minimal training run</strong> on a small JSONL slice before scaling.</li>
+    </ul>
+  </section>
+
+  <hr>
+
+  <footer>
+    <p><em>This file is written for BCU E-Portfolio / Mahara-style logbook paste; adapt timestamps and links if your fork or branch differs.</em></p>
+  </footer>
+</article>
+
+</body>
+</html>

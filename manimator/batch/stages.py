@@ -7,19 +7,32 @@ from pathlib import Path
 
 from manimator.batch.state_merge import merge_updates
 from manimator.pipeline.graph import (
-    edge_after_validate,
     node_add_narration,
     node_classify_intent,
     node_critique,
     node_decompose_scenes,
     node_finalize,
-    node_generate_code,
     node_plan_scenes,
+)
+from manimator.agents.scene_subagent import (
+    node_codegen_render,
     node_render,
     node_repair,
     node_validate,
 )
 from manimator.pipeline.state import PipelineState
+from manimator.contracts.validation import MAX_RETRIES
+
+
+def edge_after_validate(state: PipelineState) -> str:
+    """Same semantics as the pre-subagent graph: repair until pass or retry cap."""
+    if not state.failed_scene_ids:
+        return "render"
+    for scene_id in state.failed_scene_ids:
+        retry = state.retry_counts.get(scene_id, 0)
+        if retry >= MAX_RETRIES:
+            return "render"
+    return "repair"
 
 
 class LogicalStage(str, Enum):
@@ -85,7 +98,7 @@ def artifact_ready(ir_dir: Path, stage: LogicalStage) -> bool:
 
 
 async def run_validation_bundle(state: PipelineState) -> None:
-    """Validate / repair loop matching ``edge_after_validate`` semantics."""
+    """Validate / repair loop (batch resume when codegen exists without passing validation)."""
     while True:
         merge_updates(state, await node_validate(state))
         nxt = edge_after_validate(state)
@@ -115,8 +128,7 @@ async def run_critic_with_optional_replans(
         replans_done += 1
         state.replan_count = replans_done
         merge_updates(state, await node_plan_scenes(state))
-        merge_updates(state, await node_generate_code(state))
-        await run_validation_bundle(state)
+        merge_updates(state, await node_codegen_render(state))
 
 
 async def run_logical_stage(
@@ -135,12 +147,16 @@ async def run_logical_stage(
         merge_updates(state, await node_plan_scenes(state))
         return
     if stage is LogicalStage.codegen:
-        merge_updates(state, await node_generate_code(state))
+        merge_updates(state, await node_codegen_render(state))
         return
     if stage is LogicalStage.validation:
+        if state.validation_results and len(state.validation_results) >= len(state.scene_specs):
+            return
         await run_validation_bundle(state)
         return
     if stage is LogicalStage.render:
+        if state.rendered_paths and len(state.rendered_paths) >= len(state.scene_specs):
+            return
         merge_updates(state, await node_render(state))
         return
     if stage is LogicalStage.critic:

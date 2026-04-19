@@ -156,3 +156,9 @@ Architecture freeze and vocabulary for agents vs nodes vs contracts already exis
 ## Closing
 
 The codebase shows **real systems thinking** (contracts, graph, observability, IR). The gaps are **classic scale problems**: CI, determinism, packaging hygiene, and honest scope tests. Fix those and the ambitious parts of the stack stop fighting the basics. Skip them and you will ship impressive demos that fall over when another human touches the repo.
+
+---
+
+## See also
+
+- [Migration to a Subagent Pipeline](migration-to-subagent-pipeline.md) — concrete plan for collapsing `codegen → validate → repair → render` into a parallel subagent node, replacing the stub critic with a VLM judge, and routing models per node. Addresses the sequential-chain and repair-loop pain points called out above.
